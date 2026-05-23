@@ -31,10 +31,22 @@ namespace ECommerce.Olep
             await streamIncoming.SubscribeAsync(ProcessInventoryRequest);
         }
 
+        // Task 1 implemented here
         private async Task ProcessInventoryRequest(Inventory inventory, StreamSequenceToken token)
         {
-            // TODO implement this functionality
-            throw new ApplicationException();
+            // Check inventory quantity
+            if (inventory.quantity > this.quantity) {
+                // Add 90 units to the inventory if the current inventory is not enough
+                this.quantity = inventory.quantity + 90;
+            }
+            this.quantity -= inventory.quantity;
+
+            // Get outcome stream and send OK balance message to analytics actor            
+            var outcomeStream = streamProvider.GetStream<Outcome>(Constants.OutcomeNamespace, "0");
+            outcomeStream.OnNextAsync(new Outcome(inventory.customerId, this.id, inventory.price * inventory.quantity, Status.OK), token);
+
+            // No need to await the result of OnNextAsync since we return immediately after
+            return;
         }
 
         public Task<double> GetPrice()

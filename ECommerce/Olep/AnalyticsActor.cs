@@ -30,16 +30,26 @@ namespace ECommerce.Olep
             await stream.SubscribeAsync(UpdateAsync);
         }
 
+        // Task 1 implemented here
         private Task UpdateAsync(Outcome outcome, StreamSequenceToken token = null)
         {
-            // TODO implement this functionality
-            throw new ApplicationException();
+            // If checkout is successful, update the total sales for the corresponding product
+            if (outcome.status == Status.OK) {
+                if (query.ContainsKey(outcome.productId)) {
+                    query[outcome.productId] += outcome.total;
+                } else {
+                    query[outcome.productId] = outcome.total;
+                }
+            }
+            return Task.CompletedTask;
         }
 
+        // Task 1 implemented here
         public async Task<List<KeyValuePair<long, double>>> Top10()
         {
-            // TODO implement this functionality
-            throw new ApplicationException();
+            // Get top ten customers by their value
+            this.query.OrderByDescending(kv => kv.Value).Take(10).ToList();
+            return await Task.FromResult(this.query.OrderByDescending(kv => kv.Value).Take(10).ToList());
         }
 
     }

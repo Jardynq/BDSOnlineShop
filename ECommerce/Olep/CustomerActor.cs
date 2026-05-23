@@ -30,12 +30,25 @@ namespace ECommerce.Olep
 
         }
 
+        // Task 1 implemented here
         private async Task ProcessCheckout(Checkout checkout, StreamSequenceToken token = null)
         {
-            // TODO implement this functionality
-            throw new ApplicationException();
+            if (checkout.price * checkout.quantity > this.balance) {
+                // Get outcome stream and send insufficient balance message to analytics actor            
+                var outcomeStream = streamProvider.GetStream<Outcome>(Constants.OutcomeNamespace, "0");
+                outcomeStream.OnNextAsync(new Outcome(this.id, checkout.productId, checkout.price * checkout.quantity, Status.INSUFFICIENT_BALANCE), token);
+                
+                // No need to await the result of OnNextAsync since we return immediately after
+                return;
+            }
+
+            // Get product stream and send inventory request to product actor
+            var productStream = streamProvider.GetStream<Inventory>(Constants.InventoryNamespace, checkout.productId.ToString());
+            productStream.OnNextAsync(new Inventory(this.id, checkout.price, checkout.quantity), token);
+
+            // Again no need to await the result of OnNextAsync since we return immediately after
+            return;
         }
-      
     }
 }
 

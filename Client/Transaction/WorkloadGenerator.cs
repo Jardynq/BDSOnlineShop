@@ -22,7 +22,7 @@ namespace Client.Transaction
         IDiscreteDistribution customerBalanceDistribution;// the customer balance
         IDiscreteDistribution customerQtyDistribution;    // max qty a customer can buy for a product
 
-        KafkaProducer producer = KafkaProducer.BuildCheckoutProducer(); // Added Kafka producer for task 2
+        KafkaProducer producer; // Added Kafka producer for task 2
 
         public WorkloadGenerator(int numCustomerActor, int numProductActor)
         {
@@ -40,6 +40,10 @@ namespace Client.Transaction
             // wait until the client is created and connected
             InitiateClient();
             while (isClientConnected == false) Thread.Sleep(TimeSpan.FromMilliseconds(100));
+
+            // Added Kafka producer for task 2
+            producer = KafkaProducer.BuildCheckoutProducer();
+
         }
 
         async void InitiateClient()

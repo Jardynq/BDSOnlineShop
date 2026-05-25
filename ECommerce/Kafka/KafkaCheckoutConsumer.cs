@@ -35,6 +35,7 @@ public class KafkaCheckoutConsumer
     public void SubscribeAndConsume(CancellationToken cancellationToken, IAsyncStream<Checkout> stream)
     {
         this.consumer.Subscribe(topic);
+        Console.WriteLine($"Consumer created and subscribed to Kafka topic {topic}");
 
         // Consume loop
         while (!cancellationToken.IsCancellationRequested)
@@ -45,6 +46,7 @@ public class KafkaCheckoutConsumer
             // This should always be the case due to to the static builder method of this class
             if (topic == Constants.CheckoutNamespace)
             {
+                Console.WriteLine($"Consumed message from Kafka topic {topic}: {consumeResult.Message.Value}");
                 stream.OnNextAsync(consumeResult.Message.Value);
                 // ^ Obs. cannot wait since it isn't asyncronous
                 // Most likely we can return immediately after since the message is sent to the stream

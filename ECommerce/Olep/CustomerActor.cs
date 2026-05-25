@@ -36,7 +36,7 @@ namespace ECommerce.Olep
 
             // Added consumer for task 2
             this.consumer = KafkaCheckoutConsumer.Build();
-            this.consumer.SubscribeAndConsume(cancellationToken, streamIncoming);
+            Task.Run(() => this.consumer.SubscribeAndConsume(cancellationToken, streamIncoming));
 
         }
 
@@ -46,9 +46,9 @@ namespace ECommerce.Olep
             if (checkout.price * checkout.quantity > this.balance) {
                 // Get outcome stream and send insufficient balance message to analytics actor            
                 var outcomeStream = streamProvider.GetStream<Outcome>(Constants.OutcomeNamespace, "0");
-                outcomeStream.OnNextAsync(new Outcome(this.id, checkout.productId, checkout.price * checkout.quantity, Status.INSUFFICIENT_BALANCE), token);
+                await outcomeStream.OnNextAsync(new Outcome(this.id, checkout.productId, checkout.price * checkout.quantity, Status.INSUFFICIENT_BALANCE), token);
                 
-                // No need to await the result of OnNextAsync since we return immediately after
+                // Obs await might not be necessary since we return immediately after
                 return;
             }
 

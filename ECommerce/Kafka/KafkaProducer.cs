@@ -1,4 +1,5 @@
 ﻿using Confluent.Kafka;
+using Confluent.Kafka.Admin;
 using ECommerce.Olep.Schema;
 using Utilities;
 using ECommerce.Olep.Interfaces;
@@ -15,7 +16,24 @@ public class KafkaProducer
 
     public static KafkaProducer BuildCheckoutProducer()
     {
-        var config = new ProducerConfig { BootstrapServers = Constants.kafkaService };
+        var config = new ProducerConfig {
+            BootstrapServers = Constants.kafkaService
+        };
+
+        // Set up admin client to create checkout topic and set number of partions
+        // using (var adminClient = new AdminClientBuilder(new AdminClientConfig { BootstrapServers = Constants.kafkaService }).Build())
+        // {
+        //     adminClient.CreateTopicsAsync(new[]
+        //     {
+        //         new TopicSpecification
+        //         {
+        //             Name = Constants.CheckoutNamespace,
+        //             NumPartitions = 5,
+        //             ReplicationFactor = 1
+        //         }
+        //     }).GetAwaiter().GetResult();
+        // }
+
         var kafkaBuilder = new ProducerBuilder<Null, Checkout>(config).SetValueSerializer(new CheckoutEventSerializer());
 
         return new KafkaProducer(kafkaBuilder.Build(), Constants.CheckoutNamespace);

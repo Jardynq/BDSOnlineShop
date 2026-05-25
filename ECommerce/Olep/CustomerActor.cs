@@ -25,8 +25,12 @@ namespace ECommerce.Olep
         {
             this.id = this.GetPrimaryKeyLong();
             this.streamProvider = this.GetStreamProvider(Constants.DefaultStreamProvider);
-            var streamIncoming = streamProvider.GetStream<Checkout>(Constants.CheckoutNamespace, this.id.ToString());
-            await streamIncoming.SubscribeAsync(ProcessCheckout);
+            var streamCheckoutIncoming = streamProvider.GetStream<Checkout>(Constants.CheckoutNamespace, this.id.ToString());
+            await streamCheckoutIncoming.SubscribeAsync(ProcessCheckout);
+
+            // Task 1, also subscribe to the outcome stream to update balance
+            var streamOutcomeIncoming = streamProvider.GetStream<Outcome>(Constants.OutcomeNamespace, "0");
+            await streamOutcomeIncoming.SubscribeAsync(DrawBalance);
 
         }
 
@@ -48,6 +52,15 @@ namespace ECommerce.Olep
 
             // Again no need to await the result of OnNextAsync since we return immediately after
             return;
+        }
+
+        // Task 1 implemented here
+        private async Task DrawBalance(Outcome outcome, StreamSequenceToken token = null)
+        {
+            // Task 1, maybe not the right way to go about reducing the balance, since all the outcome messages are sent to the same stream
+            if (outcome.customerId == this.id && outcome.status == Status.OK) {
+                this.balance -= outcome.total;
+            }
         }
     }
 }

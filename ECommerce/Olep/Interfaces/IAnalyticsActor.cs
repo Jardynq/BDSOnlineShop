@@ -9,4 +9,3 @@
         Task<List<KeyValuePair<long, double>>> Top10();
     }
 }
-

@@ -39,16 +39,16 @@ namespace Client.Transaction
             InitiateClient();
             while (isClientConnected == false) Thread.Sleep(TimeSpan.FromMilliseconds(100));
         }
-        ~WorkloadGenerator()
-        {
-            this.clientManager.StopClient().Wait();
-        }
 
         private async void InitiateClient()
         {
             this.clientManager = new OrleansClientManager();
             this.client = await this.clientManager.StartClient();
             this.isClientConnected = true;
+        }
+        public async Task StopClient()
+        {
+            await this.clientManager.StopClient();
         }
 
         public async Task InitAllActors()
@@ -59,14 +59,17 @@ namespace Client.Transaction
             var tasks = new List<Task>();
             for (int i = 0; i < numCustomerActor; i++)
             {
+                var balance = customerBalanceDistribution.Sample();
                 var customerActor = client.GetGrain<ICustomerActor>(i);
-                tasks.Add(customerActor.Init(customerBalanceDistribution.Sample()));
+                tasks.Add(customerActor.Init(balance));
             }
 
             for (int i = 0; i < numProductActor; i++)
             {
+                var price = productPriceDistribution.Sample();
+                var amount = productQtyDistribution.Sample();
                 var productActor = client.GetGrain<IProductActor>(i);
-                tasks.Add(productActor.Init(productPriceDistribution.Sample(), productQtyDistribution.Sample()));
+                tasks.Add(productActor.Init(price, amount));
             }
 
             await Task.WhenAll(tasks);
@@ -79,7 +82,6 @@ namespace Client.Transaction
             {
                 var productActor = client.GetGrain<IProductActor>(i);
                 tasks.Add(productActor.GetInventory());
-
             }
             await Task.WhenAll(tasks);
 
@@ -92,6 +94,44 @@ namespace Client.Transaction
             }
             return new Tuple<List<long>, bool>(inventory, hasEverGotNegativeInventory);
         }
+        public async Task<Tuple<List<double>, bool>> GetAllBalance()
+        {
+            var tasks = new List<Task<double>>();
+            for (int i = 0; i < numCustomerActor; i++)
+            {
+                var customerActor = client.GetGrain<ICustomerActor>(i);
+                tasks.Add(customerActor.GetBalance());
+            }
+            await Task.WhenAll(tasks);
+
+            var hasEverGotNegativeBalance = false;
+            var balances = new List<double>();
+            foreach (var task in tasks)
+            {
+                balances.Add(task.Result);
+                if (task.Result < 0) hasEverGotNegativeBalance = true;
+            }
+            return new Tuple<List<double>, bool>(balances, hasEverGotNegativeBalance);
+        }
+
+        public async Task<List<int>> GetAllTotalResupplied()
+        {
+            var tasks = new List<Task<int>>();
+            for (int i = 0; i < numProductActor; i++)
+            {
+                var productActor = client.GetGrain<IProductActor>(i);
+                tasks.Add(productActor.GetTotalResupplied());
+            }
+            await Task.WhenAll(tasks);
+
+            var totalRessupplied = new List<int>();
+            foreach (var task in tasks)
+            {
+                totalRessupplied.Add(task.Result);
+            }
+            return totalRessupplied;
+        }
+
 
         public async Task NewCheckOutOrder()
         {
@@ -114,6 +154,16 @@ namespace Client.Transaction
         {
             List<KeyValuePair<long, double>> res = await client.GetGrain<IAnalyticsActor>(0).Top10();
             StringBuilder sb = new StringBuilder();
+            foreach (KeyValuePair<long, double> kv in res)
+            {
+                if (kv.Value > customerBalanceDistribution.Maximum)
+                {
+                    sb.AppendLine("Total amount spent larger that starting balance!");
+                    sb.AppendLine("Either due to a bug, or the server has not been restarted.");
+                    break;
+                }
+            }
+
             foreach (KeyValuePair<long, double> kv in res)
             {
                 sb.Append(kv.Key);

@@ -79,6 +79,9 @@ namespace ECommerce.Olep
             // Again, we cannot implement at least once as that requires deduplication,
             // but we cannot add an id to the event to distinguish them.
         }
+        public Task<double> GetBalance()
+        {
+            return Task.FromResult(this.balance);
+        }
     }
 }
-

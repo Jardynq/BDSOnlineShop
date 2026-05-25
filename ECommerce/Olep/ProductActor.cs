@@ -13,6 +13,7 @@ namespace ECommerce.Olep
         private long id;
         private int quantity;
         private double price;
+        private int totalResupplied;
 
         private IStreamProvider streamProvider;
         private StreamId inventoryStreamId;
@@ -22,6 +23,7 @@ namespace ECommerce.Olep
         {
             this.price = price;
             this.quantity = quantity;
+            this.totalResupplied = 0;
             return Task.CompletedTask;
         }
 
@@ -44,6 +46,7 @@ namespace ECommerce.Olep
             {
                 // Add 90 units to the inventory if the current inventory is not enough
                 this.quantity = inventory.quantity + 90;
+                this.totalResupplied += this.quantity;
             }
             this.quantity -= inventory.quantity;
 
@@ -62,6 +65,10 @@ namespace ECommerce.Olep
         {
             return Task.FromResult(this.quantity);
         }
+
+        public Task<int> GetTotalResupplied()
+        {
+            return Task.FromResult(this.totalResupplied);
+        }
     }
 }
-

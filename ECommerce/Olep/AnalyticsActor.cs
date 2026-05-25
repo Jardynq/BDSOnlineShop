@@ -9,7 +9,6 @@ namespace ECommerce.Olep
     [Reentrant]
     public class AnalyticsActor : Grain, IAnalyticsActor
     {
-
         private readonly Dictionary<long, double> query;
 
         public AnalyticsActor()
@@ -20,6 +19,9 @@ namespace ECommerce.Olep
         // just to force stream subscription
         public Task Init()
         {
+            // Clear the query dict between workload runs
+            this.query.Clear();
+
             return Task.CompletedTask;
         }
 
@@ -49,7 +51,6 @@ namespace ECommerce.Olep
             var top10 = this.query.OrderByDescending(kv => kv.Value).Take(10).ToList();
             return await Task.FromResult(top10);
         }
-
     }
 }
 

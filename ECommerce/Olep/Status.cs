@@ -6,4 +6,3 @@
         INSUFFICIENT_BALANCE
     }
 }
-

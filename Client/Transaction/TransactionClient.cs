@@ -27,7 +27,8 @@ namespace Client.Transaction
 
             // ================================================================================================================
             // STEP 2: get initial inventory of all products
-            var before_totalAmount = (await workload.GetAllInventory()).Item1.Sum();
+            var beforeTotalAmount = (await workload.GetAllInventory()).Item1.Sum();
+            var beforeTotalBalance = (await workload.GetAllBalance()).Item1.Sum();
 
             // ================================================================================================================
             // STEP 3: spawn multiple threads to submit transactions
@@ -43,14 +44,37 @@ namespace Client.Transaction
 
             allThreadsAreDone.Wait();   // wait until all threads are done
 
+            // Hack. Allow the analytics to finish processing first.
+            Thread.Sleep(5000);
+
             // ================================================================================================================
             // STEP 4: check inventory of all products again
-            var res = await workload.GetAllInventory();
-            var inventory = res.Item1;
-            var hasEverGotNegativeInventory = res.Item2;
+            var totalRessuplied = (await workload.GetAllTotalResupplied()).Sum();
+            var invRes = await workload.GetAllInventory();
+            var afterTotalAmount = invRes.Item1.Sum();
             Console.WriteLine("\n ***********************************************************************");
-            if (hasEverGotNegativeInventory) Console.WriteLine($"The inventory has once become negative!!!");
+            Console.WriteLine($"Before total product quantity     {beforeTotalAmount}");
+            Console.WriteLine($"After total product quantity      {afterTotalAmount}");
+            Console.WriteLine($"Total product quantity resupplied {totalRessuplied}");
             Console.WriteLine("\n ***********************************************************************");
+            if (invRes.Item2)
+            {
+                Console.WriteLine($"The inventory has once become negative!!!");
+                Console.WriteLine("\n ***********************************************************************");
+            }
+
+            var balRes = await workload.GetAllBalance();
+            var afterTotalBalance = balRes.Item1.Sum();
+            var totalSpent = beforeTotalBalance - afterTotalBalance;
+            Console.WriteLine($"Before total customer balance {beforeTotalBalance}");
+            Console.WriteLine($"After total customer balance  {afterTotalBalance}");
+            Console.WriteLine($"Total customer balance spent  {totalSpent}");
+            Console.WriteLine("\n ***********************************************************************");
+            if (balRes.Item2)
+            {
+                Console.WriteLine($"A customers balance has once become negative!!!");
+                Console.WriteLine("\n ***********************************************************************");
+            }
 
             // the top-10 customers
             Console.WriteLine($"The top-10 customers are: ");
@@ -58,7 +82,28 @@ namespace Client.Transaction
             Console.WriteLine(top10);
             Console.WriteLine("\n ***********************************************************************");
 
+            // Assert that the amount returned by top10 matches the total
+            // (in the case that the top10 are all customers)
+            if (numCustomerActor <= 10)
+            {
+                var sum = 0;
+                foreach (var line in top10.Split('\n'))
+                {
+                    try
+                    {
+                        sum += int.Parse(line.Split(':')[1].Trim());
+                    }
+                    catch { }
+                }
+
+                if (sum != totalSpent)
+                {
+                    Console.WriteLine($"Total spent amongst top 10, {sum}, does not match total spent all together {totalSpent}.");
+                    Console.WriteLine("\n ***********************************************************************");
+                }
+            }
             Console.WriteLine("The experiment is done. ");
+            await workload.StopClient();
         }
 
         // ================================================================================================================
@@ -84,7 +129,7 @@ namespace Client.Transaction
                               $"Number of transactions emitted = {numEmitTransaction} " +
                               $"Total time elapsed = {totalTime}");
             allThreadsAreDone.Signal();
+            await workload.StopClient();
         }
-
     }
 }

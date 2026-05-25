@@ -15,7 +15,5 @@
             this.total = total;
             this.status = status;
         }
-
     }
 }
-

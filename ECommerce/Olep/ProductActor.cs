@@ -1,4 +1,5 @@
-﻿using ECommerce.Olep.Interfaces;
+﻿using ECommerce.Kafka;
+using ECommerce.Olep.Interfaces;
 using ECommerce.Olep.Schema;
 using Orleans.Concurrency;
 using Orleans.Streams;
@@ -25,6 +26,7 @@ namespace ECommerce.Olep
 
         public override async Task OnActivateAsync(CancellationToken cancellationToken)
         {
+
             this.id = this.GetPrimaryKeyLong();
             this.streamProvider = this.GetStreamProvider(Constants.DefaultStreamProvider);
             var streamIncoming = streamProvider.GetStream<Inventory>(Constants.InventoryNamespace, this.id.ToString());
@@ -34,6 +36,8 @@ namespace ECommerce.Olep
         // Task 1 implemented here
         private async Task ProcessInventoryRequest(Inventory inventory, StreamSequenceToken token)
         {
+
+
             // Check inventory quantity
             if (inventory.quantity > this.quantity) {
                 // Add 90 units to the inventory if the current inventory is not enough

@@ -1,8 +1,10 @@
-﻿using ECommerce.Olep.Interfaces;
+﻿using System.Reflection;
+using ECommerce.Olep.Interfaces;
 using ECommerce.Olep.Schema;
 using Orleans.Concurrency;
 using Orleans.Streams;
 using Utilities;
+using ECommerce.Kafka;
 
 namespace ECommerce.Olep
 {
@@ -15,18 +17,26 @@ namespace ECommerce.Olep
 
         private IStreamProvider streamProvider;
 
+        private KafkaCheckoutConsumer consumer;
+
         public Task Init(double balance)
         {
+
             this.balance = balance;
             return Task.CompletedTask;
         }
 
         public override async Task OnActivateAsync(CancellationToken cancellationToken)
-        {
+        {   
+
             this.id = this.GetPrimaryKeyLong();
             this.streamProvider = this.GetStreamProvider(Constants.DefaultStreamProvider);
             var streamIncoming = streamProvider.GetStream<Checkout>(Constants.CheckoutNamespace, this.id.ToString());
             await streamIncoming.SubscribeAsync(ProcessCheckout);
+
+            // Added consumer for task 2
+            this.consumer = KafkaCheckoutConsumer.Build();
+            this.consumer.SubscribeAndConsume(cancellationToken, streamIncoming);
 
         }
 
@@ -44,9 +54,8 @@ namespace ECommerce.Olep
 
             // Get product stream and send inventory request to product actor
             var productStream = streamProvider.GetStream<Inventory>(Constants.InventoryNamespace, checkout.productId.ToString());
-            productStream.OnNextAsync(new Inventory(this.id, checkout.price, checkout.quantity), token);
-
-            // Again no need to await the result of OnNextAsync since we return immediately after
+            await productStream.OnNextAsync(new Inventory(this.id, checkout.price, checkout.quantity), token);
+            // Obs await might not be necessary since we return immediately after
             return;
         }
     }

@@ -35,10 +35,11 @@ namespace ECommerce.Olep
         {
             // If checkout is successful, update the total sales for the corresponding product
             if (outcome.status == Status.OK) {
-                if (query.ContainsKey(outcome.productId)) {
-                    query[outcome.productId] += outcome.total;
+                Console.WriteLine($"Received outcome: customerId = {outcome.customerId}, productId = {outcome.productId}, total = {outcome.total}, status = {outcome.status}");
+                if (query.ContainsKey(outcome.customerId)) {
+                    query[outcome.customerId] += outcome.total;
                 } else {
-                    query[outcome.productId] = outcome.total;
+                    query[outcome.customerId] = outcome.total;
                 }
             }
             return Task.CompletedTask;

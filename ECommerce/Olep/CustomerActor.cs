@@ -1,4 +1,5 @@
-﻿using ECommerce.Olep.Interfaces;
+﻿using ECommerce.Kafka;
+using ECommerce.Olep.Interfaces;
 using ECommerce.Olep.Schema;
 using Orleans.Concurrency;
 using Orleans.Runtime;
@@ -17,24 +18,33 @@ namespace ECommerce.Olep
         private StreamId checkoutStreamId;
         private StreamId outcomeStreamId;
 
+        private KafkaCheckoutConsumer consumer;
+
         public Task Init(double balance)
         {
+
             this.balance = balance;
             return Task.CompletedTask;
         }
 
         public override async Task OnActivateAsync(CancellationToken cancellationToken)
         {
+
             this.id = this.GetPrimaryKeyLong();
             this.streamProvider = this.GetStreamProvider(Constants.DefaultStreamProvider);
             this.checkoutStreamId = StreamId.Create(Constants.CheckoutNamespace, this.id.ToString());
             this.outcomeStreamId = StreamId.Create(Constants.OutcomeNamespace, "0");
 
+            // Task 1 subscriptions
             var checkoutStream = streamProvider.GetStream<Checkout>(this.checkoutStreamId);
             await checkoutStream.SubscribeAsync(ProcessCheckout);
 
             var outcomeStream = streamProvider.GetStream<Outcome>(this.outcomeStreamId);
             await outcomeStream.SubscribeAsync(ProcessOutcome);
+
+            // Added consumer for task 2
+            this.consumer = KafkaCheckoutConsumer.Build();
+            this.consumer.SubscribeAndConsume(cancellationToken, checkoutStream);
         }
 
         // Task 1 implemented here
@@ -71,6 +81,7 @@ namespace ECommerce.Olep
                 throw;
             }
         }
+
         private async Task ProcessOutcome(Outcome outcome, StreamSequenceToken token = null)
         {
             // Realistically we should undo the reservation here in case the outcome failed,
@@ -79,6 +90,7 @@ namespace ECommerce.Olep
             // Again, we cannot implement at least once as that requires deduplication,
             // but we cannot add an id to the event to distinguish them.
         }
+
         public Task<double> GetBalance()
         {
             return Task.FromResult(this.balance);

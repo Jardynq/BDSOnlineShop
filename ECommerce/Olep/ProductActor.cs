@@ -17,6 +17,8 @@ namespace ECommerce.Olep
         private int quantity;
         private double price;
 
+        // static KafkaProducer producer = KafkaProducer.BuildCheckoutProducer();
+
         public Task Init(double price, int quantity)
         {
             this.price = price;
@@ -26,7 +28,6 @@ namespace ECommerce.Olep
 
         public override async Task OnActivateAsync(CancellationToken cancellationToken)
         {
-
             this.id = this.GetPrimaryKeyLong();
             this.streamProvider = this.GetStreamProvider(Constants.DefaultStreamProvider);
             var streamIncoming = streamProvider.GetStream<Inventory>(Constants.InventoryNamespace, this.id.ToString());
@@ -36,8 +37,6 @@ namespace ECommerce.Olep
         // Task 1 implemented here
         private async Task ProcessInventoryRequest(Inventory inventory, StreamSequenceToken token)
         {
-
-
             // Check inventory quantity
             if (inventory.quantity > this.quantity) {
                 // Add 90 units to the inventory if the current inventory is not enough
@@ -47,9 +46,9 @@ namespace ECommerce.Olep
 
             // Get outcome stream and send OK balance message to analytics actor            
             var outcomeStream = streamProvider.GetStream<Outcome>(Constants.OutcomeNamespace, "0");
-            outcomeStream.OnNextAsync(new Outcome(inventory.customerId, this.id, inventory.price * inventory.quantity, Status.OK), token);
-
-            // No need to await the result of OnNextAsync since we return immediately after
+            await outcomeStream.OnNextAsync(new Outcome(inventory.customerId, this.id, inventory.price * inventory.quantity, Status.OK), token);
+            // Probably no need to await the result of OnNextAsync since we return immediately after
+            
             return;
         }
 

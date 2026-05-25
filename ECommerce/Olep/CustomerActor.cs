@@ -17,7 +17,7 @@ namespace ECommerce.Olep
 
         private IStreamProvider streamProvider;
 
-        private KafkaCheckoutConsumer consumer;
+        // private KafkaCheckoutConsumer consumer;
 
         public Task Init(double balance)
         {
@@ -31,22 +31,21 @@ namespace ECommerce.Olep
 
             this.id = this.GetPrimaryKeyLong();
             this.streamProvider = this.GetStreamProvider(Constants.DefaultStreamProvider);
-            var streamCheckoutIncoming = streamProvider.GetStream<Checkout>(Constants.CheckoutNamespace, this.id.ToString());
+            var streamCheckoutIncoming = streamProvider.GetStream<Checkout>(Constants.CustomerNamespace, this.id.ToString());
             await streamCheckoutIncoming.SubscribeAsync(ProcessCheckout);
-
+            
             // Task 1, also subscribe to the outcome stream to update balance
             var streamOutcomeIncoming = streamProvider.GetStream<Outcome>(Constants.OutcomeNamespace, "0");
             await streamOutcomeIncoming.SubscribeAsync(DrawBalance);
 
             // Added consumer for task 2
-            this.consumer = KafkaCheckoutConsumer.Build();
-            Task.Run(() => this.consumer.SubscribeAndConsume(cancellationToken, streamIncoming));
-
+            //this.consumer = KafkaCheckoutConsumer.Build();
+            // Task.Run(() => this.consumer.SubscribeAndConsume(cancellationToken, streamProvider));
         }
 
         // Task 1 implemented here
         private async Task ProcessCheckout(Checkout checkout, StreamSequenceToken token = null)
-        {
+        {   
             if (checkout.price * checkout.quantity > this.balance) {
                 // Get outcome stream and send insufficient balance message to analytics actor            
                 var outcomeStream = streamProvider.GetStream<Outcome>(Constants.OutcomeNamespace, "0");

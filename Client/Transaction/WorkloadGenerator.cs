@@ -22,11 +22,11 @@ namespace Client.Transaction
         IDiscreteDistribution customerBalanceDistribution;// the customer balance
         IDiscreteDistribution customerQtyDistribution;    // max qty a customer can buy for a product
 
-        KafkaProducer producer; // Added Kafka producer for task 2
+        // Added Kafka producer for task 2
+        private KafkaProducer producer = KafkaProducer.BuildCheckoutProducer(); // Added Kafka producer for task 2
 
         public WorkloadGenerator(int numCustomerActor, int numProductActor)
         {
-         
             this.numCustomerActor = numCustomerActor;
             this.numProductActor = numProductActor;
             // it will generate samples within range [a, b]
@@ -39,11 +39,7 @@ namespace Client.Transaction
 
             // wait until the client is created and connected
             InitiateClient();
-            while (isClientConnected == false) Thread.Sleep(TimeSpan.FromMilliseconds(100));
-
-            // Added Kafka producer for task 2
-            producer = KafkaProducer.BuildCheckoutProducer();
-
+            while (isClientConnected == false) Thread.Sleep(TimeSpan.FromMilliseconds(100));   
         }
 
         async void InitiateClient()
@@ -104,16 +100,15 @@ namespace Client.Transaction
 
             var price = await client.GetGrain<IProductActor>(productID).GetPrice();
 
-            // Old code
-            //IStreamProvider streamProvider = client.GetStreamProvider(Constants.DefaultStreamProvider);
-            //IAsyncStream<Checkout> checkoutStream = streamProvider.GetStream<Checkout>( Constants.CheckoutNamespace, customerID.ToString() );
-            //await checkoutStream.OnNextAsync(new Checkout(customerID, price, qty));
+            // Old code as provided in the handout:
+            // IStreamProvider streamProvider = client.GetStreamProvider(Constants.DefaultStreamProvider);
+            // IAsyncStream<Checkout> checkoutStream = streamProvider.GetStream<Checkout>( Constants.CheckoutNamespace, customerID.ToString() );
+            // await checkoutStream.OnNextAsync(new Checkout(productID, customerID, price, qty));
 
             // Task 2 implemented here
-            // Usin Kafka producer instead of stream
-            var checkout = new Checkout(productID, price, qty);
+            // Using Kafka producer directly instead of stream
+            var checkout = new Checkout(productID, customerID, price, qty);
             await producer.Append(checkout);
-            // ^ Obs await might not be necessary
             return;
         }
 

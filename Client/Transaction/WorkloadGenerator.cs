@@ -11,6 +11,7 @@ namespace Client.Transaction
     {
         private readonly int numCustomerActor;
         private readonly int numProductActor;
+        private OrleansClientManager clientManager;
         private IClusterClient client;
         private bool isClientConnected = false;
 
@@ -38,16 +39,20 @@ namespace Client.Transaction
             InitiateClient();
             while (isClientConnected == false) Thread.Sleep(TimeSpan.FromMilliseconds(100));
         }
+        ~WorkloadGenerator()
+        {
+            this.clientManager.StopClient().Wait();
+        }
 
         private async void InitiateClient()
         {
-            client = await OrleansClientManager.GetClient();
-            isClientConnected = true;
+            this.clientManager = new OrleansClientManager();
+            this.client = await this.clientManager.StartClient();
+            this.isClientConnected = true;
         }
 
         public async Task InitAllActors()
         {
-
             var analyticsActor = client.GetGrain<IAnalyticsActor>(0);
             await analyticsActor.Init();
 

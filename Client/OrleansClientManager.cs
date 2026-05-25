@@ -7,11 +7,13 @@ using Utilities;
 
 namespace Client
 {
-    public static class OrleansClientManager
+    public class OrleansClientManager
     {
-        public static async Task<IClusterClient> GetClient()
+        private IHost host;
+
+        public OrleansClientManager()
         {
-            var client = new HostBuilder()
+            this.host = new HostBuilder()
                 .UseOrleansClient(clientBuilder =>
                 {
                     clientBuilder.UseLocalhostClustering();
@@ -28,10 +30,17 @@ namespace Client
                     ser.AddNewtonsoftJsonSerializer(isSupported: type => type.Namespace.StartsWith("ECommerce.Olep"));
                 }))
                 .Build();
+        }
 
-            await client.StartAsync();
+        public async Task StopClient()
+        {
+            await this.host.StopAsync();
+        }
 
-            return client.Services.GetService<IClusterClient>();
+        public async Task<IClusterClient> StartClient()
+        {
+            await this.host.StartAsync();
+            return this.host.Services.GetService<IClusterClient>();
         }
     }
 }

@@ -4,6 +4,7 @@ using Utilities;
 using Orleans.Streams;
 using ECommerce.Olep.Schema;
 using System.Text;
+using ECommerce.Kafka;
 
 namespace Client.Transaction
 {
@@ -20,6 +21,8 @@ namespace Client.Transaction
         IDiscreteDistribution productPriceDistribution;   // the price of items
         IDiscreteDistribution customerBalanceDistribution;// the customer balance
         IDiscreteDistribution customerQtyDistribution;    // max qty a customer can buy for a product
+
+        KafkaProducer producer = KafkaProducer.BuildCheckoutProducer(); // Added Kafka producer for task 2
 
         public WorkloadGenerator(int numCustomerActor, int numProductActor)
         {
@@ -97,11 +100,16 @@ namespace Client.Transaction
 
             var price = await client.GetGrain<IProductActor>(productID).GetPrice();
 
-            IStreamProvider streamProvider = client.GetStreamProvider(Constants.DefaultStreamProvider);
+            // Old code
+            //IStreamProvider streamProvider = client.GetStreamProvider(Constants.DefaultStreamProvider);
+            //IAsyncStream<Checkout> checkoutStream = streamProvider.GetStream<Checkout>( Constants.CheckoutNamespace, customerID.ToString() );
+            //await checkoutStream.OnNextAsync(new Checkout(customerID, price, qty));
 
-            IAsyncStream<Checkout> checkoutStream = streamProvider.GetStream<Checkout>( Constants.CheckoutNamespace, customerID.ToString() );
-            await checkoutStream.OnNextAsync(new Checkout(customerID, price, qty));
-
+            // Task 2 implemented here
+            // Usin Kafka producer instead of stream
+            var checkout = new Checkout(productID, price, qty);
+            await producer.Append(checkout);
+            // ^ Obs await might not be necessary
             return;
         }
 

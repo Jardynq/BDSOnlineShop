@@ -114,25 +114,6 @@ namespace Client.Transaction
             return new Tuple<List<double>, bool>(balances, hasEverGotNegativeBalance);
         }
 
-        public async Task<List<int>> GetAllTotalResupplied()
-        {
-            var tasks = new List<Task<int>>();
-            for (int i = 0; i < numProductActor; i++)
-            {
-                var productActor = client.GetGrain<IProductActor>(i);
-                tasks.Add(productActor.GetTotalResupplied());
-            }
-            await Task.WhenAll(tasks);
-
-            var totalRessupplied = new List<int>();
-            foreach (var task in tasks)
-            {
-                totalRessupplied.Add(task.Result);
-            }
-            return totalRessupplied;
-        }
-
-
         public async Task NewCheckOutOrder()
         {
 

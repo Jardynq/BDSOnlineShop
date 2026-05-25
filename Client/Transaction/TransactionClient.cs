@@ -49,13 +49,11 @@ namespace Client.Transaction
 
             // ================================================================================================================
             // STEP 4: check inventory of all products again
-            var totalRessuplied = (await workload.GetAllTotalResupplied()).Sum();
             var invRes = await workload.GetAllInventory();
             var afterTotalAmount = invRes.Item1.Sum();
             Console.WriteLine("\n ***********************************************************************");
-            Console.WriteLine($"Before total product quantity     {beforeTotalAmount}");
-            Console.WriteLine($"After total product quantity      {afterTotalAmount}");
-            Console.WriteLine($"Total product quantity resupplied {totalRessuplied}");
+            Console.WriteLine($"Before total product quantity {beforeTotalAmount}");
+            Console.WriteLine($"After total product quantity  {afterTotalAmount}");
             Console.WriteLine("\n ***********************************************************************");
             if (invRes.Item2)
             {

@@ -8,6 +8,5 @@
         // accessed by the workload generator only
         Task<double> GetPrice();
         Task<int> GetInventory();
-        Task<int> GetTotalResupplied();
     }
 }

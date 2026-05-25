@@ -15,7 +15,7 @@ namespace Client.Transaction
         private bool isClientConnected = false;
 
         // Added Kafka producer for task 2
-        private KafkaProducer producer = KafkaProducer.BuildCheckoutProducer();
+        private KafkaProducer producer;
 
         private IDiscreteDistribution customerDistribution;       // which customer send the request
         private IDiscreteDistribution productDistribution;        // which product to buy
@@ -40,6 +40,9 @@ namespace Client.Transaction
             // wait until the client is created and connected
             InitiateClient();
             while (isClientConnected == false) Thread.Sleep(TimeSpan.FromMilliseconds(100));
+
+            // Added Kafka producer for task 2
+            producer = KafkaProducer.BuildCheckoutProducer();
         }
 
         private async void InitiateClient()

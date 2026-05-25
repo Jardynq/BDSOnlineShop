@@ -44,7 +44,8 @@ namespace ECommerce.Olep
 
             // Added consumer for task 2
             this.consumer = KafkaCheckoutConsumer.Build();
-            this.consumer.SubscribeAndConsume(cancellationToken, checkoutStream);
+            _ = Task.Run(() => this.consumer.SubscribeAndConsume(cancellationToken, checkoutStream));
+            // Why are we not awaiting this???
         }
 
         // Task 1 implemented here

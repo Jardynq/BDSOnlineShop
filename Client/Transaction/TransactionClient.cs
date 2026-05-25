@@ -1,13 +1,13 @@
-﻿using System.Diagnostics;
-using ECommerce.Kafka;
+﻿using ECommerce.Olep.Interfaces;
+using System.Diagnostics;
 
 namespace Client.Transaction
 {
     internal class TransactionClient
     {
-
         private int numCustomerActor = 10;
         private int numProductActor = 100;
+        private readonly int numConsumerProxyActor = 10; // Parameter added for task 2
 
         // for experiment setting
         private int numCustomerThread = 8;
@@ -18,6 +18,17 @@ namespace Client.Transaction
 
         public async Task RunClient()
         {
+
+            // (Added for task 2)
+            // ================================================================================================================
+            // STEP 0: init all consumers (for producers, one producer is made per instantiation of WorkloadGenerator)
+            var client = await OrleansClientManager.GetClient();
+            for (int i = 0; i < numConsumerProxyActor; i++)
+            {
+                // Console.WriteLine($"Starting consumer proxy actor {i}");
+                var proxy = client.GetGrain<IProxyActor>(i);
+                await proxy.Init();
+            }
 
             // ================================================================================================================
             // STEP 1: init all actors

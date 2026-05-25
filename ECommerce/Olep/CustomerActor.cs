@@ -1,5 +1,4 @@
-﻿using ECommerce.Kafka;
-using ECommerce.Olep.Interfaces;
+﻿using ECommerce.Olep.Interfaces;
 using ECommerce.Olep.Schema;
 using Orleans.Concurrency;
 using Orleans.Runtime;
@@ -18,7 +17,7 @@ namespace ECommerce.Olep
         private StreamId checkoutStreamId;
         private StreamId outcomeStreamId;
 
-        private KafkaCheckoutConsumer consumer;
+        // private KafkaCheckoutConsumer consumer;
 
         public Task Init(double balance)
         {
@@ -39,13 +38,13 @@ namespace ECommerce.Olep
             var checkoutStream = streamProvider.GetStream<Checkout>(this.checkoutStreamId);
             await checkoutStream.SubscribeAsync(ProcessCheckout);
 
+            // Task 1, also subscribe to the outcome stream to update balance
             var outcomeStream = streamProvider.GetStream<Outcome>(this.outcomeStreamId);
             await outcomeStream.SubscribeAsync(ProcessOutcome);
 
             // Added consumer for task 2
-            this.consumer = KafkaCheckoutConsumer.Build();
-            _ = Task.Run(() => this.consumer.SubscribeAndConsume(cancellationToken, checkoutStream));
-            // Why are we not awaiting this???
+            //this.consumer = KafkaCheckoutConsumer.Build();
+            // Task.Run(() => this.consumer.SubscribeAndConsume(cancellationToken, streamProvider));
         }
 
         // Task 1 implemented here

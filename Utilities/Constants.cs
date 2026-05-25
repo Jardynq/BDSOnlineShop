@@ -1,4 +1,4 @@
-﻿namespace Utilities
+namespace Utilities
 {
     public class Constants
     {
@@ -9,6 +9,7 @@
 
         // Stream Namespaces
         public const string CheckoutNamespace = "checkout";
+        public const string CustomerNamespace = "customer";
         public const string InventoryNamespace = "inventory";
         public const string OutcomeNamespace = "BD713788-B5AE-49FF-8B2C-F311B9CB0CA0";
 
@@ -16,5 +17,6 @@
 
         public const string kafkaService = "localhost:9092";
         public const string zooKeeperService = "localhost:2181";
+
     }
 }

@@ -1,5 +1,4 @@
-﻿using ECommerce.Kafka;
-using ECommerce.Olep.Interfaces;
+﻿using ECommerce.Olep.Interfaces;
 using ECommerce.Olep.Schema;
 using Orleans.Concurrency;
 using Orleans.Runtime;
@@ -19,6 +18,8 @@ namespace ECommerce.Olep
         private StreamId inventoryStreamId;
         private StreamId outcomeStreamId;
 
+        // static KafkaProducer producer = KafkaProducer.BuildCheckoutProducer();
+
         public Task Init(double price, int quantity)
         {
             this.price = price;
@@ -28,7 +29,6 @@ namespace ECommerce.Olep
 
         public override async Task OnActivateAsync(CancellationToken cancellationToken)
         {
-
             this.id = this.GetPrimaryKeyLong();
             this.streamProvider = this.GetStreamProvider(Constants.DefaultStreamProvider);
             this.outcomeStreamId = StreamId.Create(Constants.OutcomeNamespace, "0");
@@ -41,8 +41,6 @@ namespace ECommerce.Olep
         // Task 1 implemented here
         private async Task ProcessInventoryRequest(Inventory inventory, StreamSequenceToken token)
         {
-
-
             // Check inventory quantity
             if (this.quantity < inventory.quantity)
             {
@@ -55,6 +53,7 @@ namespace ECommerce.Olep
             var outcomeStream = streamProvider.GetStream<Outcome>(this.outcomeStreamId);
             var outcomeEvent = new Outcome(inventory.customerId, this.id, inventory.price * inventory.quantity, Status.OK);
             await outcomeStream.OnNextAsync(outcomeEvent, token);
+            // Probably no need to await the result of OnNextAsync since we return immediately after
         }
 
         public Task<double> GetPrice()

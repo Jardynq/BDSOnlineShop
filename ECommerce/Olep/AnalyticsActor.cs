@@ -39,8 +39,8 @@ namespace ECommerce.Olep
             if (outcome.status == Status.OK)
             {
                 Console.WriteLine($"Received outcome: customerId = {outcome.customerId}, productId = {outcome.productId}, total = {outcome.total}, status = {outcome.status}");
-                var previous = query.GetValueOrDefault(outcome.productId, 0);
-                this.query[outcome.productId] = previous + outcome.total;
+                var previous = query.GetValueOrDefault(outcome.customerId, 0);
+                this.query[outcome.customerId] = previous + outcome.total;
             }
             return Task.CompletedTask;
         }

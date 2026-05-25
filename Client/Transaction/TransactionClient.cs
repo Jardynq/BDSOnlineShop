@@ -5,15 +5,15 @@ namespace Client.Transaction
     internal class TransactionClient
     {
 
-        int numCustomerActor = 10;
-        int numProductActor = 100;
+        private int numCustomerActor = 10;
+        private int numProductActor = 100;
 
         // for experiment setting
-        int numCustomerThread = 8;
-        TimeSpan runTime = TimeSpan.FromSeconds(10);    // use this time to control how long time the experiment will run
+        private int numCustomerThread = 8;
+        private TimeSpan runTime = TimeSpan.FromSeconds(10);    // use this time to control how long time the experiment will run
 
-        CountdownEvent allThreadsStart;
-        CountdownEvent allThreadsAreDone;
+        private CountdownEvent allThreadsStart;
+        private CountdownEvent allThreadsAreDone;
 
         public async Task RunClient()
         {
@@ -62,7 +62,7 @@ namespace Client.Transaction
         }
 
         // ================================================================================================================
-        async void CustomerWorkAsync(object obj)
+        private async void CustomerWorkAsync(object obj)
         {
             var thread = (int)obj;
             var numEmitTransaction = 0;
@@ -85,6 +85,6 @@ namespace Client.Transaction
                               $"Total time elapsed = {totalTime}");
             allThreadsAreDone.Signal();
         }
-     
+
     }
 }

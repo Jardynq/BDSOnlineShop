@@ -22,13 +22,13 @@ namespace Client
                     });
                     clientBuilder.AddMemoryStreams(Constants.DefaultStreamProvider);
                 })
-                // .ConfigureLogging(loggingBuilder => loggingBuilder.AddConsole())
+                .ConfigureLogging(loggingBuilder => loggingBuilder.AddConsole())
                 .ConfigureServices(f => f.AddSerializer(ser =>
                 {
                     ser.AddNewtonsoftJsonSerializer(isSupported: type => type.Namespace.StartsWith("ECommerce.Olep"));
                 }))
                 .Build();
-         
+
             await client.StartAsync();
 
             return client.Services.GetService<IClusterClient>();

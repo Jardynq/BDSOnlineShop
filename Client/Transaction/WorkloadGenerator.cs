@@ -1,29 +1,29 @@
-﻿using MathNet.Numerics.Distributions;
-using ECommerce.Olep.Interfaces;
-using Utilities;
-using Orleans.Streams;
+﻿using ECommerce.Olep.Interfaces;
 using ECommerce.Olep.Schema;
+using MathNet.Numerics.Distributions;
+using Orleans.Streams;
 using System.Text;
+using Utilities;
 
 namespace Client.Transaction
 {
     internal class WorkloadGenerator
     {
-        readonly int numCustomerActor;
-        readonly int numProductActor;
-        IClusterClient client;
-        bool isClientConnected = false;
-      
-        IDiscreteDistribution customerDistribution;       // which customer send the request
-        IDiscreteDistribution productDistribution;        // which product to buy
-        IDiscreteDistribution productQtyDistribution;     // the number of items available for each product
-        IDiscreteDistribution productPriceDistribution;   // the price of items
-        IDiscreteDistribution customerBalanceDistribution;// the customer balance
-        IDiscreteDistribution customerQtyDistribution;    // max qty a customer can buy for a product
+        private readonly int numCustomerActor;
+        private readonly int numProductActor;
+        private IClusterClient client;
+        private bool isClientConnected = false;
+
+        private IDiscreteDistribution customerDistribution;       // which customer send the request
+        private IDiscreteDistribution productDistribution;        // which product to buy
+        private IDiscreteDistribution productQtyDistribution;     // the number of items available for each product
+        private IDiscreteDistribution productPriceDistribution;   // the price of items
+        private IDiscreteDistribution customerBalanceDistribution;// the customer balance
+        private IDiscreteDistribution customerQtyDistribution;    // max qty a customer can buy for a product
 
         public WorkloadGenerator(int numCustomerActor, int numProductActor)
         {
-         
+
             this.numCustomerActor = numCustomerActor;
             this.numProductActor = numProductActor;
             // it will generate samples within range [a, b]
@@ -39,7 +39,7 @@ namespace Client.Transaction
             while (isClientConnected == false) Thread.Sleep(TimeSpan.FromMilliseconds(100));
         }
 
-        async void InitiateClient()
+        private async void InitiateClient()
         {
             client = await OrleansClientManager.GetClient();
             isClientConnected = true;
@@ -55,7 +55,7 @@ namespace Client.Transaction
             for (int i = 0; i < numCustomerActor; i++)
             {
                 var customerActor = client.GetGrain<ICustomerActor>(i);
-                tasks.Add(customerActor.Init(customerBalanceDistribution.Sample()));  
+                tasks.Add(customerActor.Init(customerBalanceDistribution.Sample()));
             }
 
             for (int i = 0; i < numProductActor; i++)
@@ -63,7 +63,7 @@ namespace Client.Transaction
                 var productActor = client.GetGrain<IProductActor>(i);
                 tasks.Add(productActor.Init(productPriceDistribution.Sample(), productQtyDistribution.Sample()));
             }
-               
+
             await Task.WhenAll(tasks);
         }
 
@@ -74,7 +74,7 @@ namespace Client.Transaction
             {
                 var productActor = client.GetGrain<IProductActor>(i);
                 tasks.Add(productActor.GetInventory());
-           
+
             }
             await Task.WhenAll(tasks);
 
@@ -90,7 +90,7 @@ namespace Client.Transaction
 
         public async Task NewCheckOutOrder()
         {
-   
+
             var customerID = customerDistribution.Sample();
             var productID = productDistribution.Sample();
             var qty = customerQtyDistribution.Sample();
@@ -99,7 +99,7 @@ namespace Client.Transaction
 
             IStreamProvider streamProvider = client.GetStreamProvider(Constants.DefaultStreamProvider);
 
-            IAsyncStream<Checkout> checkoutStream = streamProvider.GetStream<Checkout>( Constants.CheckoutNamespace, customerID.ToString() );
+            IAsyncStream<Checkout> checkoutStream = streamProvider.GetStream<Checkout>(Constants.CheckoutNamespace, customerID.ToString());
             await checkoutStream.OnNextAsync(new Checkout(customerID, price, qty));
 
             return;
@@ -109,9 +109,9 @@ namespace Client.Transaction
         {
             List<KeyValuePair<long, double>> res = await client.GetGrain<IAnalyticsActor>(0).Top10();
             StringBuilder sb = new StringBuilder();
-            foreach(KeyValuePair<long, double> kv in res)
+            foreach (KeyValuePair<long, double> kv in res)
             {
-                sb.Append (kv.Key);
+                sb.Append(kv.Key);
                 sb.Append(" : ");
                 sb.Append(kv.Value);
                 sb.AppendLine();

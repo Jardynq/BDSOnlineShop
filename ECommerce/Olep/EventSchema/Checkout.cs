@@ -3,7 +3,6 @@
     [Serializable]
     public sealed class Checkout
     {
-       
         public readonly long productId;
         public readonly double price;
         public readonly int quantity;

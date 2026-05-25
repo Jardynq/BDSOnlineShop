@@ -38,6 +38,7 @@ namespace ECommerce.Olep
             // If checkout is successful, update the total sales for the corresponding product
             if (outcome.status == Status.OK)
             {
+                Console.WriteLine($"Received outcome: customerId = {outcome.customerId}, productId = {outcome.productId}, total = {outcome.total}, status = {outcome.status}");
                 var previous = query.GetValueOrDefault(outcome.productId, 0);
                 this.query[outcome.productId] = previous + outcome.total;
             }
@@ -53,4 +54,3 @@ namespace ECommerce.Olep
         }
     }
 }
-

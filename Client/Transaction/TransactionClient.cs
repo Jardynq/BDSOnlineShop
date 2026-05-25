@@ -1,4 +1,5 @@
 ﻿using System.Diagnostics;
+using ECommerce.Kafka;
 
 namespace Client.Transaction
 {
@@ -21,6 +22,7 @@ namespace Client.Transaction
             // ================================================================================================================
             // STEP 1: init all actors
             var workload = new WorkloadGenerator(numCustomerActor, numProductActor);
+
             await workload.InitAllActors();
             Console.WriteLine("\n ***********************************************************************");
             Console.WriteLine($"#customer = {numCustomerActor}, #product = {numProductActor}");

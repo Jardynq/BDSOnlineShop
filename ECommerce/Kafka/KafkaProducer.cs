@@ -21,18 +21,24 @@ public class KafkaProducer
         };
 
         // Set up admin client to create checkout topic and set number of partions
-        // using (var adminClient = new AdminClientBuilder(new AdminClientConfig { BootstrapServers = Constants.kafkaService }).Build())
-        // {
-        //     adminClient.CreateTopicsAsync(new[]
-        //     {
-        //         new TopicSpecification
-        //         {
-        //             Name = Constants.CheckoutNamespace,
-        //             NumPartitions = 5,
-        //             ReplicationFactor = 1
-        //         }
-        //     }).GetAwaiter().GetResult();
-        // }
+        using (var adminClient = new AdminClientBuilder(new AdminClientConfig { BootstrapServers = Constants.kafkaService }).Build())
+        {
+        try
+            {
+                adminClient.CreateTopicsAsync(new[]
+                {
+                    new TopicSpecification
+                    {
+                        Name              = Constants.CheckoutNamespace,
+                        NumPartitions     = 1,
+                        ReplicationFactor = 1
+                    }
+                }).GetAwaiter().GetResult();
+            }
+            catch (CreateTopicsException ex) {
+                Console.WriteLine($"An error occured creating topic {Constants.CheckoutNamespace}: {ex.Results[0].Error.Reason}");
+            }   
+        }
 
         var kafkaBuilder = new ProducerBuilder<Null, Checkout>(config).SetValueSerializer(new CheckoutEventSerializer());
 

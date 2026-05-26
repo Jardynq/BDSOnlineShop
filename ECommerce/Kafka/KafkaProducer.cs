@@ -56,14 +56,14 @@ public class KafkaProducer : IDisposable
         this.outputTopic = outputTopic;
     }
 
-    public async Task Append(Checkout e)
+    public async Task Append(long customerID, Checkout e)
     {
         // output the event to kafka (external service)
         // here we use the .NET kafka client implemented by Confluent
         await producer.ProduceAsync(outputTopic, new Message<long, Checkout>
         {
             Timestamp = new Timestamp(Timestamp.UnixTimeEpoch, TimestampType.CreateTime),
-            Key = e.customerId,
+            Key = customerID,
             Value = e
         });
     }

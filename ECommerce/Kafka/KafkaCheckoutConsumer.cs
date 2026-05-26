@@ -46,7 +46,7 @@ public class KafkaCheckoutConsumer : IDisposable
             {
                 continue;
             }
-            IAsyncStream<Checkout> customerStream = streamProvider.GetStream<Checkout>(Constants.CustomerNamespace, consumeResult.Message.Value.customerId.ToString());
+            IAsyncStream<Checkout> customerStream = streamProvider.GetStream<Checkout>(Constants.CustomerNamespace, consumeResult.Message.Key.ToString());
             await customerStream.OnNextAsync(consumeResult.Message.Value);
             consumer.Commit(consumeResult);
         }

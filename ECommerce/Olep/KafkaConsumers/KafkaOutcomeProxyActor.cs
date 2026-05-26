@@ -18,28 +18,26 @@ namespace ECommerce.Olep.KafkaConsumers
             var customerId = result.Message.Key;
             var outcomeEvent = result.Message.Value;
 
-            // Forward to the relevant actor
-            var actor = GrainFactory.GetGrain<ICustomerActor>(customerId);
-            try
+            if (outcomeEvent.status != Status.OK)
             {
-                await actor.ProcessOutcome(outcomeEvent, null);
-            }
-            catch (TimeoutException)
-            {
-                Console.WriteLine($"Customer outcome processing timed out for customer {customerId} in partition {this.id}");
-                // TODO, should we retry or just fail the grain?
-                throw;
+                // We currently have no reason to forward non OK events
+                return;
             }
 
-            // Forward to the analytics actor
+            // Forward to the relevant actors
+            var actor = GrainFactory.GetGrain<ICustomerActor>(customerId);
             var analyticsActor = GrainFactory.GetGrain<IAnalyticsActor>(0);
+
             try
             {
-                await analyticsActor.UpdateAsync(outcomeEvent, null);
+                await Task.WhenAll(new Task[] {
+                    actor.ProcessOutcome(outcomeEvent, null),
+                    analyticsActor.UpdateAsync(outcomeEvent, null),
+                });
             }
             catch (TimeoutException)
             {
-                Console.WriteLine($"Analytics outcome processing timed out for customer {customerId} in partition {this.id}");
+                Console.WriteLine($"Outcome processing timed out for customer {customerId} in partition {this.id}");
                 // TODO, should we retry or just fail the grain?
                 throw;
             }

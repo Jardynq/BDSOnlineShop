@@ -42,8 +42,8 @@ namespace ECommerce.Olep
 
             // Get outcome stream and send OK balance message to analytics actor            
             var outcomeEvent = new Outcome(inventory.customerId, this.id, inventory.price * inventory.quantity, Status.OK);
-            await outcomeProducer.Append(inventory.customerId, outcomeEvent);
-            // Probably no need to await the result of OnNextAsync since we return immediately after
+            //await outcomeProducer.Append(inventory.customerId, outcomeEvent);
+            _ = outcomeProducer.Append(inventory.customerId, outcomeEvent);
         }
 
         public Task<double> GetPrice()

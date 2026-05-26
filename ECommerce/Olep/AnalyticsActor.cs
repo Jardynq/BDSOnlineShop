@@ -2,7 +2,6 @@
 using ECommerce.Olep.Schema;
 using Orleans.Concurrency;
 using Orleans.Streams;
-using Utilities;
 
 namespace ECommerce.Olep
 {
@@ -16,7 +15,6 @@ namespace ECommerce.Olep
             this.query = new Dictionary<long, double>();
         }
 
-        // just to force stream subscription
         public Task Init()
         {
             // Clear the query dict between workload runs
@@ -27,9 +25,6 @@ namespace ECommerce.Olep
 
         public override async Task OnActivateAsync(CancellationToken cancellationToken)
         {
-            var streamProvider = this.GetStreamProvider(Constants.DefaultStreamProvider);
-            var stream = streamProvider.GetStream<Outcome>(Constants.OutcomeNamespace, "0");
-            await stream.SubscribeAsync(UpdateAsync);
         }
 
         public Task UpdateAsync(Outcome outcome, StreamSequenceToken token = null)
@@ -37,7 +32,6 @@ namespace ECommerce.Olep
             // If checkout is successful, update the total sales for the corresponding product
             if (outcome.status == Status.OK)
             {
-                Console.WriteLine($"Received outcome: customerId = {outcome.customerId}, productId = {outcome.productId}, total = {outcome.total}, status = {outcome.status}");
                 var previous = query.GetValueOrDefault(outcome.customerId, 0);
                 this.query[outcome.customerId] = previous + outcome.total;
             }

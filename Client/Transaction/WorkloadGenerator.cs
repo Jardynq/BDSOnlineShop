@@ -135,7 +135,8 @@ namespace Client.Transaction
 
             // Task 2 implemented here
             // Usin Kafka producer instead of stream
-            var checkout = new Checkout(productID, customerID, price, qty);
+            var checkout = new Checkout(productID, price, qty);
+            //await producer.Append(customerID, checkout);
             _ = producer.Append(customerID, checkout);
             // Do not await, just fire as many as possible.
             return;

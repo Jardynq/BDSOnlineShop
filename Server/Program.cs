@@ -15,8 +15,14 @@ using var host = new HostBuilder()
                 options.ClusterId = Constants.ClusterId;
                 options.ServiceId = Constants.ServiceId;
             })
-            .AddMemoryStreams(Constants.DefaultStreamProvider)
-            .AddMemoryGrainStorage("PubSubStore")
+            //.AddMemoryStreams(Constants.DefaultStreamProvider)
+            //.AddMemoryGrainStorage("PubSubStore")
+            .UseDashboard(options =>
+            {
+                options.Port = 8080;
+                options.Username = "admin";
+                options.Password = "admin";
+            })
             .ConfigureLogging(logging =>
             {
                 logging.ClearProviders();

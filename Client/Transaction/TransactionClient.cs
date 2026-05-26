@@ -8,7 +8,7 @@ namespace Client.Transaction
         private int numProductActor = 100;
 
         // for experiment setting
-        private int numCustomerThread = 10;
+        private int numCustomerThread = 8;
         private TimeSpan runTime = TimeSpan.FromSeconds(10);    // use this time to control how long time the experiment will run
 
         private CountdownEvent allThreadsStart;
@@ -96,6 +96,7 @@ namespace Client.Transaction
                 if (sum != totalSpent)
                 {
                     Console.WriteLine($"Total spent amongst top 10, {sum}, does not match total spent all together {totalSpent}.");
+                    Console.WriteLine("This is probably because the analytics hasn't finished processing.");
                     Console.WriteLine("\n ***********************************************************************");
                 }
             }

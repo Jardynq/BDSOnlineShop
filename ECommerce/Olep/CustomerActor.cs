@@ -36,7 +36,8 @@ namespace ECommerce.Olep
             {
                 // Get outcome log and send insufficient balance message to analytics actor            
                 var outcome = new Outcome(this.id, checkout.productId, checkout.price * checkout.quantity, Status.INSUFFICIENT_BALANCE);
-                await outcomeProducer.Append(this.id, outcome);
+                //await outcomeProducer.Append(this.id, outcome);
+                _ = outcomeProducer.Append(this.id, outcome);
                 return;
             }
 
@@ -45,7 +46,8 @@ namespace ECommerce.Olep
 
             // Get product log and send inventory request to product actor
             var inventoryEvent = new Inventory(this.id, checkout.price, checkout.quantity);
-            await inventoryProducer.Append(checkout.productId, inventoryEvent);
+            //await inventoryProducer.Append(checkout.productId, inventoryEvent);
+            _ = inventoryProducer.Append(checkout.productId, inventoryEvent);
         }
 
         public async Task ProcessOutcome(Outcome outcome, StreamSequenceToken token = null)

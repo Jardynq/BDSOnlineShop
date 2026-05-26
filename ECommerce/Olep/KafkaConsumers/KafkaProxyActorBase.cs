@@ -45,7 +45,6 @@ namespace ECommerce.Olep.KafkaConsumers
 
         public Task ReceiveReminder(string reminderName, TickStatus status)
         {
-            Console.WriteLine($"Reminder {reminderName} on {this.topic} {this.id}");
             if (reminderName == "heartbeat")
             {
                 InitAndStartPolling();
@@ -68,7 +67,7 @@ namespace ECommerce.Olep.KafkaConsumers
             return Task.CompletedTask;
         }
 
-        private async Task ConsumeAsync(object state)
+        private async Task ConsumeAsync(object _)
         {
             // For some reason this gets cancelled even though the grain is active.
             // I have no idea why, or what to do about it.

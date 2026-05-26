@@ -15,7 +15,7 @@ namespace Client.Transaction
         private bool isClientConnected = false;
 
         // Added Kafka producer for task 2
-        private KafkaProducer producer;
+        private KafkaProducer<Checkout> producer;
 
         private IDiscreteDistribution customerDistribution;       // which customer send the request
         private IDiscreteDistribution productDistribution;        // which product to buy
@@ -42,7 +42,7 @@ namespace Client.Transaction
             while (isClientConnected == false) Thread.Sleep(TimeSpan.FromMilliseconds(100));
 
             // Added Kafka producer for task 2
-            producer = KafkaProducer.BuildCheckoutProducer();
+            producer = new KafkaProducer<Checkout>(Utilities.Constants.CheckoutNamespace);
         }
 
         private async void InitiateClient()
@@ -136,7 +136,8 @@ namespace Client.Transaction
             // Task 2 implemented here
             // Usin Kafka producer instead of stream
             var checkout = new Checkout(productID, customerID, price, qty);
-            await producer.Append(checkout);
+            _ = producer.Append(customerID, checkout);
+            // Do not await, just fire as many as possible.
             return;
         }
 

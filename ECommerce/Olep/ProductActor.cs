@@ -1,7 +1,7 @@
-﻿using ECommerce.Olep.Interfaces;
+﻿using ECommerce.Kafka;
+using ECommerce.Olep.Interfaces;
 using ECommerce.Olep.Schema;
 using Orleans.Concurrency;
-using Orleans.Runtime;
 using Orleans.Streams;
 using Utilities;
 
@@ -14,11 +14,7 @@ namespace ECommerce.Olep
         private int quantity;
         private double price;
 
-        private IStreamProvider streamProvider;
-        private StreamId inventoryStreamId;
-        private StreamId outcomeStreamId;
-
-        // static KafkaProducer producer = KafkaProducer.BuildCheckoutProducer();
+        private KafkaProducer<Outcome> outcomeProducer;
 
         public Task Init(double price, int quantity)
         {
@@ -30,16 +26,11 @@ namespace ECommerce.Olep
         public override async Task OnActivateAsync(CancellationToken cancellationToken)
         {
             this.id = this.GetPrimaryKeyLong();
-            this.streamProvider = this.GetStreamProvider(Constants.DefaultStreamProvider);
-            this.outcomeStreamId = StreamId.Create(Constants.OutcomeNamespace, "0");
-            this.inventoryStreamId = StreamId.Create(Constants.InventoryNamespace, this.id.ToString());
-
-            var inventoryStream = streamProvider.GetStream<Inventory>(this.inventoryStreamId);
-            await inventoryStream.SubscribeAsync(ProcessInventoryRequest);
+            this.outcomeProducer = new KafkaProducer<Outcome>(Constants.OutcomeNamespace);
         }
 
         // Task 1 implemented here
-        private async Task ProcessInventoryRequest(Inventory inventory, StreamSequenceToken token)
+        public async Task ProcessInventoryRequest(Inventory inventory, StreamSequenceToken token)
         {
             // Check inventory quantity
             if (this.quantity < inventory.quantity)
@@ -50,9 +41,8 @@ namespace ECommerce.Olep
             this.quantity -= inventory.quantity;
 
             // Get outcome stream and send OK balance message to analytics actor            
-            var outcomeStream = streamProvider.GetStream<Outcome>(this.outcomeStreamId);
             var outcomeEvent = new Outcome(inventory.customerId, this.id, inventory.price * inventory.quantity, Status.OK);
-            await outcomeStream.OnNextAsync(outcomeEvent, token);
+            await outcomeProducer.Append(inventory.customerId, outcomeEvent);
             // Probably no need to await the result of OnNextAsync since we return immediately after
         }
 

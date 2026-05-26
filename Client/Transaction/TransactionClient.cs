@@ -1,5 +1,4 @@
-﻿using ECommerce.Olep.Interfaces;
-using System.Diagnostics;
+﻿using System.Diagnostics;
 
 namespace Client.Transaction
 {
@@ -7,10 +6,9 @@ namespace Client.Transaction
     {
         private int numCustomerActor = 10;
         private int numProductActor = 100;
-        private readonly int numConsumerProxyActor = 10; // Parameter added for task 2
 
         // for experiment setting
-        private int numCustomerThread = 8;
+        private int numCustomerThread = 10;
         private TimeSpan runTime = TimeSpan.FromSeconds(10);    // use this time to control how long time the experiment will run
 
         private CountdownEvent allThreadsStart;
@@ -18,18 +16,6 @@ namespace Client.Transaction
 
         public async Task RunClient()
         {
-
-            // (Added for task 2)
-            // ================================================================================================================
-            // STEP 0: init all consumers (for producers, one producer is made per instantiation of WorkloadGenerator)
-            var client = await OrleansClientManager.GetClient();
-            for (int i = 0; i < numConsumerProxyActor; i++)
-            {
-                // Console.WriteLine($"Starting consumer proxy actor {i}");
-                var proxy = client.GetGrain<IProxyActor>(i);
-                await proxy.Init();
-            }
-
             // ================================================================================================================
             // STEP 1: init all actors
             var workload = new WorkloadGenerator(numCustomerActor, numProductActor);

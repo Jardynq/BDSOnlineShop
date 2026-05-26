@@ -1,74 +1,47 @@
 ﻿using Confluent.Kafka;
-using Confluent.Kafka.Admin;
-using ECommerce.Olep.Schema;
 using Utilities;
 
 namespace ECommerce.Kafka;
 
-public class KafkaProducer : IDisposable
+public class KafkaProducer<TEvent> : IDisposable
+    where TEvent : class
 {
-    private static readonly int numberOfPartitions = 10;
+    private readonly string topic;
+    private readonly IProducer<long, TEvent> producer;
 
-    private readonly string outputTopic;
-    private readonly IProducer<long, Checkout> producer;
-
-    public static KafkaProducer BuildCheckoutProducer()
+    public KafkaProducer(string topic)
     {
         var config = new ProducerConfig
         {
-            BootstrapServers = Constants.kafkaService
+            BootstrapServers = Constants.kafkaService,
+            /*
+            EnableIdempotence = true,
+            Acks = Acks.All,
+            MessageSendMaxRetries = 10,
+            RetryBackoffMs = 100,
+            MessageTimeoutMs = 5000 // 5 seconds
+            */
         };
 
-        // Set up admin client to create checkout topic and set number of partions
-        using (var adminClient = new AdminClientBuilder(new AdminClientConfig { BootstrapServers = Constants.kafkaService }).Build())
-        {
+        var kafkaBuilder = new ProducerBuilder<long, TEvent>(config)
+                .SetValueSerializer(new EventSerializer<TEvent>());
 
-            // This is done each time a new thread is created, which for an experiment with 8 threads throws a lot of errors if not caught
-            // We should change this logic
-            // Currently I must close the docker container to restart Kafka entirely
-            try
-            {
-                adminClient.CreateTopicsAsync(new[]
-                {
-                    new TopicSpecification
-                    {
-                        Name = Constants.CheckoutNamespace,
-                        NumPartitions = numberOfPartitions,
-                        ReplicationFactor = 1
-                    }
-                }).GetAwaiter().GetResult();
-                Console.WriteLine($"\n ** Setup ** : Kafka topic {Constants.CheckoutNamespace} created with {numberOfPartitions} partitions.");
-            }
-            catch (CreateTopicsException ex)
-            {
-                // Console.WriteLine($"An error occured creating topic {Constants.CheckoutNamespace}: {ex.Results[0].Error.Reason}");
-            }
-        }
-
-        var kafkaBuilder = new ProducerBuilder<long, Checkout>(config).SetValueSerializer(new CheckoutEventSerializer());
-        // Console.WriteLine($"Producer connecting to {Constants.kafkaService}, topic {Constants.CheckoutNamespace}");
-        return new KafkaProducer(kafkaBuilder.Build(), Constants.CheckoutNamespace);
+        this.topic = topic;
+        this.producer = kafkaBuilder.Build();
     }
 
-    private KafkaProducer(IProducer<long, Checkout> producer, string outputTopic)
-    {
-        this.producer = producer;
-        this.outputTopic = outputTopic;
-    }
-
-    public async Task Append(Checkout e)
+    public async Task Append(long key, TEvent e)
     {
         // output the event to kafka (external service)
         // here we use the .NET kafka client implemented by Confluent
-        await producer.ProduceAsync(outputTopic, new Message<long, Checkout>
+        await producer.ProduceAsync(topic, new Message<long, TEvent>
         {
-            Timestamp = new Timestamp(Timestamp.UnixTimeEpoch, TimestampType.CreateTime),
-            Key = e.customerId,
+            Key = key,
             Value = e
         });
     }
 
-    // I don't think this method is firing, but it was created to ensure that the consumer is properly closed when the proxy actor is disposed of
+    // I don't think this method is firing, but it was created to ensure that the producer is properly closed when the proxy actor is disposed of
     // Might need to do something different
     public void Dispose()
     {

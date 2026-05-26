@@ -32,8 +32,7 @@ namespace ECommerce.Olep
             await stream.SubscribeAsync(UpdateAsync);
         }
 
-        // Task 1 implemented here
-        private Task UpdateAsync(Outcome outcome, StreamSequenceToken token = null)
+        public Task UpdateAsync(Outcome outcome, StreamSequenceToken token = null)
         {
             // If checkout is successful, update the total sales for the corresponding product
             if (outcome.status == Status.OK)
@@ -45,7 +44,6 @@ namespace ECommerce.Olep
             return Task.CompletedTask;
         }
 
-        // Task 1 implemented here
         public async Task<List<KeyValuePair<long, double>>> Top10()
         {
             // Get top ten customers by their value

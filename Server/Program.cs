@@ -1,4 +1,5 @@
-﻿using Microsoft.Extensions.Hosting;
+﻿using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Orleans.Configuration;
 using Orleans.Serialization;
@@ -25,8 +26,12 @@ using var host = new HostBuilder()
             .Services.AddSerializer(ser =>
             {
                 ser.AddNewtonsoftJsonSerializer(isSupported: type => type.Namespace.StartsWith("ECommerce.Olep"));
-            })
-            ;
+            });
+    })
+    .ConfigureServices(services =>
+    {
+        // Ensure that a Kafka consumer proxy actor is created for each partition of each topic.
+        services.AddHostedService<KafkaBootstrapService>();
     })
     .Build();
 

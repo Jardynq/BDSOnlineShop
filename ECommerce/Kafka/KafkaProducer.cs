@@ -2,15 +2,11 @@
 using Confluent.Kafka.Admin;
 using ECommerce.Olep.Schema;
 using Utilities;
-using ECommerce.Olep.Interfaces;
-using ECommerce.Olep.Schema;
-using Orleans.Concurrency;
-using Orleans.Streams;
 
 namespace ECommerce.Kafka;
+
 public class KafkaProducer : IDisposable
 {
-
     private static readonly int numberOfPartitions = 10;
 
     private readonly string outputTopic;
@@ -18,7 +14,8 @@ public class KafkaProducer : IDisposable
 
     public static KafkaProducer BuildCheckoutProducer()
     {
-        var config = new ProducerConfig {
+        var config = new ProducerConfig
+        {
             BootstrapServers = Constants.kafkaService
         };
 
@@ -26,10 +23,10 @@ public class KafkaProducer : IDisposable
         using (var adminClient = new AdminClientBuilder(new AdminClientConfig { BootstrapServers = Constants.kafkaService }).Build())
         {
 
-        // This is done each time a new thread is created, which for an experiment with 8 threads throws a lot of errors if not caught
-        // We should change this logic
-        // Currently I must close the docker container to restart Kafka entirely
-        try
+            // This is done each time a new thread is created, which for an experiment with 8 threads throws a lot of errors if not caught
+            // We should change this logic
+            // Currently I must close the docker container to restart Kafka entirely
+            try
             {
                 adminClient.CreateTopicsAsync(new[]
                 {
@@ -42,9 +39,10 @@ public class KafkaProducer : IDisposable
                 }).GetAwaiter().GetResult();
                 Console.WriteLine($"\n ** Setup ** : Kafka topic {Constants.CheckoutNamespace} created with {numberOfPartitions} partitions.");
             }
-            catch (CreateTopicsException ex) {
+            catch (CreateTopicsException ex)
+            {
                 // Console.WriteLine($"An error occured creating topic {Constants.CheckoutNamespace}: {ex.Results[0].Error.Reason}");
-            }   
+            }
         }
 
         var kafkaBuilder = new ProducerBuilder<long, Checkout>(config).SetValueSerializer(new CheckoutEventSerializer());
@@ -79,4 +77,3 @@ public class KafkaProducer : IDisposable
         Console.WriteLine("Producer closed.");
     }
 }
-

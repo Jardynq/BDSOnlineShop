@@ -1,10 +1,7 @@
 ﻿using Confluent.Kafka;
 using ECommerce.Olep.Schema;
+using Orleans.Streams;
 using Utilities;
-
-using Orleans.Streams;
-using Orleans.Concurrency;
-using Orleans.Streams;
 
 namespace ECommerce.Kafka;
 
@@ -15,7 +12,8 @@ public class KafkaCheckoutConsumer : IDisposable
 
     public static KafkaCheckoutConsumer Build()
     {
-        var config = new ConsumerConfig { 
+        var config = new ConsumerConfig
+        {
             BootstrapServers = Constants.kafkaService,
             // Disable auto-committing of offsets.
             EnableAutoCommit = false,
@@ -45,11 +43,11 @@ public class KafkaCheckoutConsumer : IDisposable
             var consumeResult = consumer.Consume(TimeSpan.FromSeconds(5));
 
             if (consumeResult == null)
-            {   
+            {
                 continue;
             }
-            IAsyncStream<Checkout> customerStream = streamProvider.GetStream<Checkout>( Constants.CustomerNamespace, consumeResult.Message.Value.customerId.ToString() );
-            await customerStream.OnNextAsync(consumeResult.Message.Value); 
+            IAsyncStream<Checkout> customerStream = streamProvider.GetStream<Checkout>(Constants.CustomerNamespace, consumeResult.Message.Value.customerId.ToString());
+            await customerStream.OnNextAsync(consumeResult.Message.Value);
             consumer.Commit(consumeResult);
         }
     }
@@ -63,4 +61,3 @@ public class KafkaCheckoutConsumer : IDisposable
         Console.WriteLine("Consumer closed.");
     }
 }
-

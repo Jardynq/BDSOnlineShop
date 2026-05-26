@@ -3,9 +3,9 @@ using ECommerce.Olep.Schema;
 using Utilities;
 
 namespace Client.Kafka;
+
 public class KafkaProducer
 {
-
     private readonly string outputTopic;
     private readonly IProducer<Null, Checkout> producer;
 
@@ -23,7 +23,7 @@ public class KafkaProducer
         this.outputTopic = outputTopic;
     }
 
-    async Task Append(Checkout e)
+    private async Task Append(Checkout e)
     {
         // output the event to kafka (external service)
         // here we use the .NET kafka client implemented by Confluent
@@ -33,6 +33,4 @@ public class KafkaProducer
             Value = e
         });
     }
-
 }
-

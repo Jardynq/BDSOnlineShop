@@ -11,7 +11,8 @@ public class KafkaConsumer
 
     public static KafkaConsumer Build()
     {
-        var config = new ConsumerConfig { 
+        var config = new ConsumerConfig
+        {
             BootstrapServers = Constants.kafkaService,
             // Disable auto-committing of offsets.
             EnableAutoCommit = false
@@ -39,8 +40,5 @@ public class KafkaConsumer
             // handle consumed message.
             // ...
         }
-
     }
-
 }
-

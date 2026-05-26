@@ -17,6 +17,7 @@ using var host = new HostBuilder()
             })
             //.AddMemoryStreams(Constants.DefaultStreamProvider)
             //.AddMemoryGrainStorage("PubSubStore")
+            .UseInMemoryReminderService()
             .UseDashboard(options =>
             {
                 options.Port = 8080;

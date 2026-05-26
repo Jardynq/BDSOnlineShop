@@ -1,48 +1,77 @@
 ﻿using Confluent.Kafka;
 using ECommerce.Kafka;
+using Orleans.Runtime;
 
 namespace ECommerce.Olep.KafkaConsumers
 {
-    public abstract class KafkaProxyActorBase<TEvent> : Grain
+    public abstract class KafkaProxyActorBase<TEvent> : Grain, IRemindable
         where TEvent : class
     {
         private const int BATCH_SIZE = 512;
 
+        private bool isInitialized;
+        private CancellationToken cancellationToken;
+        private KafkaConsumer<TEvent> consumer;
+        private IDisposable timer;
+
         protected int id;
         protected string topic;
         protected string group;
-        protected CancellationToken cancellationToken;
-        protected KafkaConsumer<TEvent> consumer;
-        protected IDisposable timer;
 
         protected virtual async Task Consume(ConsumeResult<long, TEvent> result) { }
 
         public override async Task OnActivateAsync(CancellationToken cancellationToken)
         {
+            this.isInitialized = false;
             this.id = (int)this.GetPrimaryKeyLong();
             this.cancellationToken = cancellationToken;
             this.consumer = new KafkaConsumer<TEvent>(this.topic, this.group, id);
         }
-
-        public Task StartConsumingAsync()
+        public override async Task OnDeactivateAsync(DeactivationReason reason, CancellationToken cancellationToken)
         {
+            this.isInitialized = false;
+            this.timer?.Dispose();
+            this.consumer?.Dispose();
+        }
+
+        public Task StartFromBootstrap()
+        {
+            // Spread the heartbeats out over 10 seconds to avoid thundering herd on startup
+            var startDelay = new Random().Next(60000, 70000);
+            this.RegisterOrUpdateReminder("heartbeat", TimeSpan.FromMilliseconds(startDelay), TimeSpan.FromMinutes(1));
+            InitAndStartPolling();
+            return Task.CompletedTask;
+        }
+
+        public Task ReceiveReminder(string reminderName, TickStatus status)
+        {
+            Console.WriteLine($"Reminder {reminderName} on {this.topic} {this.id}");
+            if (reminderName == "heartbeat")
+            {
+                InitAndStartPolling();
+            }
+            return Task.CompletedTask;
+        }
+
+        public Task InitAndStartPolling()
+        {
+            if (isInitialized)
+            {
+                return Task.CompletedTask;
+            }
+
             // Set up an Orleans timer to continuously poll Kafka
             Console.WriteLine($"Starting Kafka {this.topic} proxy for partition {this.id}...");
             DelayDeactivation(TimeSpan.MaxValue);
             timer = RegisterTimer(ConsumeAsync, null, TimeSpan.FromMilliseconds(10), TimeSpan.FromMilliseconds(50));
+            this.isInitialized = true;
             return Task.CompletedTask;
         }
 
         private async Task ConsumeAsync(object state)
         {
-            // For some reason this gets cancelled after like 10 seconds
-            // So just ignore for now.
-            // We could use reminders to consistenly heartbeat the grain
-            // but for some reason I cannot find any reminder func in the orleans imports?
-            // It seems we need to download an extra package.
-            // So I tried the reminders, but for some reason the cancellation token is unrelated to the
-            // grain deactivation, and just gets cancelled after like 10 seconds for some reason,
-            // even if the grain is still active and the reminders cannot do anything.
+            // For some reason this gets cancelled even though the grain is active.
+            // I have no idea why, or what to do about it.
             // So just ignore for now.
             /*
             if (this.cancellationToken.IsCancellationRequested)

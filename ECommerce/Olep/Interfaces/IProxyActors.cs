@@ -2,16 +2,16 @@
 {
     public interface IKafkaCheckoutProxyActor : IGrainWithIntegerKey
     {
-        Task StartConsumingAsync();
+        Task StartFromBootstrap();
     }
 
     public interface IKafkaInventoryProxyActor : IGrainWithIntegerKey
     {
-        Task StartConsumingAsync();
+        Task StartFromBootstrap();
     }
 
     public interface IKafkaOutcomeProxyActor : IGrainWithIntegerKey
     {
-        Task StartConsumingAsync();
+        Task StartFromBootstrap();
     }
 }

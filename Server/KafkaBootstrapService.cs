@@ -29,13 +29,13 @@ public class KafkaBootstrapService : BackgroundService
         for (int i = 0; i < numPartitions; i++)
         {
             var checkoutConsumer = this.grainFactory.GetGrain<IKafkaCheckoutProxyActor>(i);
-            tasks.Add(checkoutConsumer.StartConsumingAsync());
+            tasks.Add(checkoutConsumer.StartFromBootstrap());
 
             var inventoryConsumer = this.grainFactory.GetGrain<IKafkaInventoryProxyActor>(i);
-            tasks.Add(inventoryConsumer.StartConsumingAsync());
+            tasks.Add(inventoryConsumer.StartFromBootstrap());
 
             var outcomeConsumer = this.grainFactory.GetGrain<IKafkaOutcomeProxyActor>(i);
-            tasks.Add(outcomeConsumer.StartConsumingAsync());
+            tasks.Add(outcomeConsumer.StartFromBootstrap());
         }
         await Task.WhenAll(tasks);
     }

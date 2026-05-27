@@ -1,4 +1,4 @@
-using ECommerce.Kafka;
+﻿using ECommerce.Kafka;
 using ECommerce.Olep.Interfaces;
 using ECommerce.Olep.Schema;
 using MathNet.Numerics.Distributions;
@@ -134,7 +134,7 @@ namespace Client.Transaction
             //await checkoutStream.OnNextAsync(new Checkout(customerID, price, qty));
 
             // Task 2 implemented here
-            // Usin Kafka producer instead of stream
+            // Using Kafka producer instead of stream
             var checkout = new Checkout(productID, price, qty);
             //await producer.Append(customerID, checkout);
             _ = producer.Append(customerID, checkout);

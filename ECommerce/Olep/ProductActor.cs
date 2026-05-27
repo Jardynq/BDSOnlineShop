@@ -6,6 +6,7 @@ using MessagePack;
 using Orleans.Concurrency;
 using Orleans.Streams;
 using Utilities;
+using ECommerce.Olep.Token;
 
 namespace ECommerce.Olep
 {
@@ -16,13 +17,15 @@ namespace ECommerce.Olep
         public int Quantity { get; set; }
         [Key(1)]
         public double Price { get; set; }
-
+        [Key(2)]
+        public long LastInventoryEventSequenceNumber { get; set; }
         public object Clone()
         {
             return new ProductActorState
             {
                 Quantity = this.Quantity,
-                Price = this.Price
+                Price = this.Price,
+                LastInventoryEventSequenceNumber = this.LastInventoryEventSequenceNumber
             };
         }
 
@@ -30,6 +33,7 @@ namespace ECommerce.Olep
         {
             this.Quantity = 0;
             this.Price = 0;
+            this.LastInventoryEventSequenceNumber = 0;
         }
     }
 
@@ -74,6 +78,19 @@ namespace ECommerce.Olep
         // Task 1 implemented here
         public async Task ProcessInventoryRequest(Inventory inventory, StreamSequenceToken token)
         {
+            checkpointer.Tick();
+
+            if (token is ConcreteToken concreteToken)
+            {
+                // Check if the event is a duplicate by comparing the sequence number (timestamp) with the last processed event
+                if (concreteToken.SequenceNumber <= this.state.LastInventoryEventSequenceNumber)
+                {
+                    // If so, just return
+                    // Console.WriteLine($"Duplicate event detected for product actor {this.id} in inventory processing");
+                    return;
+                }
+            }
+
             // Check inventory quantity
             if (this.state.Quantity < inventory.quantity)
             {
@@ -86,6 +103,12 @@ namespace ECommerce.Olep
             var outcomeEvent = new Outcome(inventory.customerId, this.id, inventory.price * inventory.quantity, Status.OK);
             //await outcomeProducer.Append(inventory.customerId, outcomeEvent);
             _ = outcomeProducer.Append(inventory.customerId, outcomeEvent);
+
+            // The request has now been processed fully and we note the sequence number (timestamp) on the token to be able to ignore duplicates later
+            if (token is ConcreteToken _concreteToken)
+            {
+                this.state.LastInventoryEventSequenceNumber = _concreteToken.SequenceNumber;
+            }
         }
 
         public Task<double> GetPrice()

@@ -36,6 +36,7 @@ public class KafkaProducer<TEvent> : IDisposable
         // here we use the .NET kafka client implemented by Confluent
         await producer.ProduceAsync(topic, new Message<long, TEvent>
         {
+            Timestamp = new Timestamp(DateTime.UtcNow),
             Key = key,
             Value = e
         });

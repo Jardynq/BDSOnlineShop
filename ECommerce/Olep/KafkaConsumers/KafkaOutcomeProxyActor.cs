@@ -1,7 +1,7 @@
 ﻿using Confluent.Kafka;
 using ECommerce.Olep.Interfaces;
 using ECommerce.Olep.Schema;
-
+using ECommerce.Olep.Token;
 namespace ECommerce.Olep.KafkaConsumers
 {
     public class KafkaOutcomeProxyActor : KafkaProxyActorBase<Outcome>, IKafkaOutcomeProxyActor
@@ -17,6 +17,7 @@ namespace ECommerce.Olep.KafkaConsumers
         {
             var customerId = result.Message.Key;
             var outcomeEvent = result.Message.Value;
+            var timeStamp = result.Message.Timestamp.UtcDateTime.Ticks;
 
             if (outcomeEvent.status != Status.OK)
             {
@@ -25,14 +26,15 @@ namespace ECommerce.Olep.KafkaConsumers
             }
 
             // Forward to the relevant actors
-            var actor = GrainFactory.GetGrain<ICustomerActor>(customerId);
+            var customerActor = GrainFactory.GetGrain<ICustomerActor>(customerId);
             var analyticsActor = GrainFactory.GetGrain<IAnalyticsActor>(0);
 
             try
             {
+                var token = new ConcreteToken(timeStamp);
                 await Task.WhenAll(new Task[] {
-                    actor.ProcessOutcome(outcomeEvent, null),
-                    analyticsActor.UpdateAsync(outcomeEvent, null),
+                    customerActor.ProcessOutcome(outcomeEvent, token),
+                    analyticsActor.UpdateAsync(outcomeEvent, token),
                 });
             }
             catch (TimeoutException)

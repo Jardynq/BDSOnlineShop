@@ -6,6 +6,7 @@ using MessagePack;
 using Orleans.Concurrency;
 using Orleans.Streams;
 using Utilities;
+using ECommerce.Olep.Token;
 
 namespace ECommerce.Olep
 {
@@ -14,18 +15,24 @@ namespace ECommerce.Olep
     {
         [Key(0)]
         public double Balance { get; set; }
-
+        // Event number to be able to ignore duplicates 
+        [Key(1)]
+        public long LastCheckoutEventSequenceNumber { get; set; }
+        [Key(2)]
+        public long LastOutcomeEventSequenceNumber { get; set; }
         public object Clone()
         {
             return new CustomerActorState
             {
-                Balance = this.Balance
+                Balance = this.Balance,
+                LastCheckoutEventSequenceNumber = this.LastCheckoutEventSequenceNumber
             };
         }
 
         public CustomerActorState()
         {
             this.Balance = 0;
+            this.LastCheckoutEventSequenceNumber = 0;
         }
     }
 
@@ -37,12 +44,6 @@ namespace ECommerce.Olep
 
         private AsyncCheckpointer<CustomerActorState> checkpointer;
         private IDisposable checkpointTimer;
-
-        // Use this for kafka checkpointing. i.e. last kafka event that was gotten.
-        // OR maybe not. Atleast we need to somehow checkpoint the current kafka state for this actor.
-        // Instead of a guid, we can just use the timestamp as a hack.
-        // If we recieve an event that has a lesser timestamp, then we know it's a duplicate and can ignore it.
-        private int lastEventTimestamp;
 
         private KafkaProducer<Outcome> outcomeProducer;
         private KafkaProducer<Inventory> inventoryProducer;
@@ -81,8 +82,19 @@ namespace ECommerce.Olep
         }
 
         public async Task ProcessCheckout(Checkout checkout, StreamSequenceToken token = null)
-        {
+        {   
             checkpointer.Tick();
+
+            if (token is ConcreteToken concreteToken)
+            {
+                // Check if the event is a duplicate by comparing the sequence number (timestamp) with the last processed event
+                if (concreteToken.SequenceNumber <= this.state.LastCheckoutEventSequenceNumber)
+                {
+                    // If so, just return
+                    // Console.WriteLine($"Duplicate event detected for customer actor {this.id} in checkout processing {concreteToken.SequenceNumber} vs {this.state.LastCheckoutEventSequenceNumber}");
+                    return;
+                }
+            }
 
             var total = checkout.price * checkout.quantity;
             if (total > this.state.Balance)
@@ -91,6 +103,7 @@ namespace ECommerce.Olep
                 var outcome = new Outcome(this.id, checkout.productId, checkout.price * checkout.quantity, Status.INSUFFICIENT_BALANCE);
                 //await outcomeProducer.Append(this.id, outcome);
                 _ = outcomeProducer.Append(this.id, outcome);
+
                 return;
             }
 
@@ -100,12 +113,30 @@ namespace ECommerce.Olep
             // Get product log and send inventory request to product actor
             var inventoryEvent = new Inventory(this.id, checkout.price, checkout.quantity);
             //await inventoryProducer.Append(checkout.productId, inventoryEvent);
+
             _ = inventoryProducer.Append(checkout.productId, inventoryEvent);
+
+            // The request has now been processed fully and we note the sequence number (timestamp) on the token to be able to ignore duplicates later
+            if (token is ConcreteToken _concreteToken)
+            {
+                this.state.LastCheckoutEventSequenceNumber = _concreteToken.SequenceNumber;
+            }
         }
 
         public async Task ProcessOutcome(Outcome outcome, StreamSequenceToken token = null)
         {
             checkpointer.Tick();
+
+            if (token is ConcreteToken concreteToken)
+            {
+                // Check if the event is a duplicate by comparing the sequence number (timestamp) with the last processed event
+                if (concreteToken.SequenceNumber <= this.state.LastOutcomeEventSequenceNumber)
+                {
+                    // If so, just write to console and return 
+                    // Console.WriteLine($"Duplicate event detected for customer actor {this.id} in outcome processing");
+                    // return;
+                }
+            }
 
             // Realistically we should undo the reservation here in case the outcome failed,
             // however the outcome cannot fail after INSUFFICIENT_BALANCE has been checked,

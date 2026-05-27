@@ -38,8 +38,8 @@ namespace ECommerce.Olep.Checkpointing
 
         public static async Task WriteStaticAsync(String name, long id, TState snapshot)
         {
-            // Timestamp to microsecond precision to avoid collisions, and use UTC to avoid timezone issues
-            var timestamp = DateTime.UtcNow.ToString("yyyy_MM_dd-HH:mm:ss.ffffff");
+            // Timestamp to microsecond precision to avoid collisions, and use UTC to avo½id timezone issues
+            var timestamp = DateTime.UtcNow.ToString("yyyy_MM_dd-HH_mm_ss.ffffff");
             var root = $"Checkpoints/{name}/{id}/";
             var file = $"{root}{timestamp}.bin";
 

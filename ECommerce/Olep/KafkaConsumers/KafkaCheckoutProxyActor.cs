@@ -22,12 +22,13 @@ namespace ECommerce.Olep.KafkaConsumers
             var customerId = result.Message.Key;
             var checkoutEvent = result.Message.Value;
             var offset = result.Offset.Value;
+            var partition = result.Partition.Value;
 
             // Forward to the relevant actor
             var actor = GrainFactory.GetGrain<ICustomerActor>(customerId);
             try
             {
-                var token = new ConcreteToken(offset, this.id);
+                var token = new ConcreteToken(offset, partition);
                 await actor.ProcessCheckout(checkoutEvent, token);
             }
             catch (TimeoutException)

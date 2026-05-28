@@ -19,12 +19,13 @@ namespace ECommerce.Olep.KafkaConsumers
             var productId = result.Message.Key;
             var inventoryEvent = result.Message.Value;
             var offset = result.Offset.Value;
+            var partition = result.Partition.Value;
 
             // Forward to the relevant actor
             var actor = GrainFactory.GetGrain<IProductActor>(productId);
             try
             {
-                var token = new ConcreteToken(offset, this.id);
+                var token = new ConcreteToken(offset, partition);
                 await actor.ProcessInventoryRequest(inventoryEvent, token);
             }
             catch (TimeoutException)

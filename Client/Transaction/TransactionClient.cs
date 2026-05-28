@@ -77,7 +77,11 @@ namespace Client.Transaction
             Console.WriteLine($"The top-10 customers are: ");
             var top10 = await workload.GetTopTen();
             Console.WriteLine(top10);
+            var totalBalanceAnalytics = await workload.GetTotalAnalyticsBalance();
+            Console.WriteLine($"Sum of analytics (Should match 'Total customer balance spent'): {totalBalanceAnalytics}");
             Console.WriteLine("\n ***********************************************************************");
+            
+            
 
             // Assert that the amount returned by top10 matches the total
             // (in the case that the top10 are all customers)

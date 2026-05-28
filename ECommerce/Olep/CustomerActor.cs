@@ -134,8 +134,6 @@ namespace ECommerce.Olep
 
         public async Task ProcessOutcome(Outcome outcome, StreamSequenceToken token = null)
         {
-            checkpointer.Tick();
-
             if (token is ConcreteToken concreteToken)
             {
                 // Check if the event is a duplicate by comparing the sequence number (timestamp) with the last processed event

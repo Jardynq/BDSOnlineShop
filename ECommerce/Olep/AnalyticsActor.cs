@@ -63,6 +63,8 @@ namespace ECommerce.Olep
 
         public Task UpdateAsync(Outcome outcome, StreamSequenceToken token = null)
         {
+            checkpointer.Tick();
+
             if (token is ConcreteToken concreteToken)
             {
                 // Check if the event is a duplicate by comparing the sequence number (timestamp) with the last processed event
@@ -75,7 +77,7 @@ namespace ECommerce.Olep
                         // this ruins the purpose of this, since the single actor client cannot distinguish yet between between the producers
                         // it might not work on the other actors either since all consumers may contact all grains, but it happens less
                         // we should fix this pronto
-                        Console.WriteLine($"Duplicate event detected for analytics actor 0 on id {concreteToken.EventIndex}");
+                        Console.WriteLine($"Duplicate event detected for analytics actor 0: partition={concreteToken.EventIndex}, offset={concreteToken.SequenceNumber}, lastSeen={lastSequenceNumber}");
                         return Task.CompletedTask;
                     }
                 }
@@ -108,6 +110,11 @@ namespace ECommerce.Olep
             // Get top ten customers by their value
             var top10 = this.state.Query.OrderByDescending(kv => kv.Value).Take(10).ToList();
             return await Task.FromResult(top10);
+        }
+
+        public async Task<double> GetSumOfAllBalance()
+        {
+            return await Task.FromResult(this.state.Query.Values.Sum());
         }
     }
 }

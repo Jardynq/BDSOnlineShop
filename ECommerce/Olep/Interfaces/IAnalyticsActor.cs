@@ -13,5 +13,8 @@ namespace ECommerce.Olep.Interfaces
 
         // accessed by transaction client
         Task<List<KeyValuePair<long, double>>> Top10();
+
+        // Added for sanity check
+        Task<double> GetSumOfAllBalance();
     }
 }

@@ -166,5 +166,9 @@ namespace Client.Transaction
             return sb.ToString();
         }
 
+        public async Task<double> GetTotalAnalyticsBalance()
+        {
+            return await client.GetGrain<IAnalyticsActor>(0).GetSumOfAllBalance();
+        }
     }
 }

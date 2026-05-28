@@ -6,16 +6,21 @@ using Orleans.Concurrency;
 using Orleans.Streams;
 using System.Text.Json;
 using ECommerce.Olep.Token;
+using Utilities;
 
 namespace ECommerce.Olep
 {
+
     [MessagePackObject]
     public class AnalyticsActorState : ICloneable
     {
         [Key(0)]
         public Dictionary<long, double> Query { get; set; }
+        // Use a dictionary of hashSets so each Kafka Partition is a key into the the dictionary
+        // Then we store the last Constants.StoreCapacity offsets from this partition to see if they have been processed before
+        // This is the "Sliding window technique" and it is necessary for the analytics actor since this grain can be activate from different consumers using the same partition
         [Key(1)]
-        public Dictionary<int, long> LastOutcomeEventSequenceNumbers { get; set; }
+        public Dictionary<int, HashSet<long>> ProcessedOutcomeEvent { get; set; }
         public object Clone()
         {
             string temp = JsonSerializer.Serialize(this);
@@ -25,11 +30,11 @@ namespace ECommerce.Olep
         public AnalyticsActorState()
         {
             this.Query = new Dictionary<long, double>();
-            this.LastOutcomeEventSequenceNumbers = new Dictionary<int, long>();
+            this.ProcessedOutcomeEvent = new Dictionary<int, HashSet<long>>(Constants.StoreCapacity);
         }
     }
 
-    [Reentrant]
+    //[Reentrant]
     public class AnalyticsActor : Grain, IAnalyticsActor
     {
         private AnalyticsActorState state;
@@ -68,16 +73,12 @@ namespace ECommerce.Olep
             if (token is ConcreteToken concreteToken)
             {
                 // Check if the event is a duplicate by comparing the sequence number (timestamp) with the last processed event
-                if (this.state.LastOutcomeEventSequenceNumbers.TryGetValue(concreteToken.EventIndex, out long lastSequenceNumber))
-                {
-                    if (concreteToken.SequenceNumber <= lastSequenceNumber)
+                if (this.state.ProcessedOutcomeEvent.TryGetValue(concreteToken.EventIndex, out HashSet<long> set))
+                {   
+                    if (set.Contains(concreteToken.SequenceNumber))
                     {
-                        // TODO TODO
-                        // OBS currently disabled for analytics actor, since it receives events from many producers all with different sequence numbers
-                        // this ruins the purpose of this, since the single actor client cannot distinguish yet between between the producers
-                        // it might not work on the other actors either since all consumers may contact all grains, but it happens less
-                        // we should fix this pronto
-                        Console.WriteLine($"Duplicate event detected for analytics actor 0: partition={concreteToken.EventIndex}, offset={concreteToken.SequenceNumber}, lastSeen={lastSequenceNumber}");
+                        // Already processed sequence number from this partition so we discard the processing of this event and continue
+                        Console.WriteLine($"Duplicate event detected for analytics actor 0: partition = {concreteToken.EventIndex}, offset = {concreteToken.SequenceNumber}");
                         return Task.CompletedTask;
                     }
                 }
@@ -93,13 +94,25 @@ namespace ECommerce.Olep
             // The request has now been processed fully and we note the sequence number (timestamp) on the token to be able to ignore duplicates later
             if (token is ConcreteToken _concreteToken)
             {
-                if (state.LastOutcomeEventSequenceNumbers.ContainsKey(_concreteToken.EventIndex))
+                if (state.ProcessedOutcomeEvent.ContainsKey(_concreteToken.EventIndex))
                 {
-                    state.LastOutcomeEventSequenceNumbers[_concreteToken.EventIndex] = _concreteToken.SequenceNumber;
+
+                    while (state.ProcessedOutcomeEvent[_concreteToken.EventIndex].Count() >= Constants.StoreCapacity)
+                    {
+                        long oldestOffset = state.ProcessedOutcomeEvent[_concreteToken.EventIndex].Min();
+                        state.ProcessedOutcomeEvent[_concreteToken.EventIndex].Remove(oldestOffset);
+                    }
+                    state.ProcessedOutcomeEvent[_concreteToken.EventIndex].Add(_concreteToken.SequenceNumber);
                 }
                 else
                 {
-                    state.LastOutcomeEventSequenceNumbers.Add(_concreteToken.EventIndex, _concreteToken.SequenceNumber);
+                    state.ProcessedOutcomeEvent.Add(
+                        _concreteToken.EventIndex,
+                        new HashSet<long>(Constants.StoreCapacity)
+                        {
+                            _concreteToken.SequenceNumber
+                        }
+                    );
                 }
             }
             return Task.CompletedTask;

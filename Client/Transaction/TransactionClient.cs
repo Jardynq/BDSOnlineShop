@@ -173,7 +173,7 @@ namespace Client.Transaction
 
         private async void EndToEndLatencySampler(object obj)
         {
-            var customerId = numCustomerActor + 1;
+            var customerId = numCustomerActor;
             var numEmitTransaction = 0;
             var workload = new WorkloadGenerator(1, 1, 0);
             var watch = new Stopwatch();

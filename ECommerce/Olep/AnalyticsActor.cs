@@ -21,9 +21,6 @@ namespace ECommerce.Olep
         // just to force stream subscription
         public Task Init()
         {
-            // Clear the query dict between workload runs
-            this.query.Clear();
-
             return Task.CompletedTask;
         }
 

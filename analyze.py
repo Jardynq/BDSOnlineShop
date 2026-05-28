@@ -20,7 +20,6 @@ end_df = df.melt(
     value_name="end_ns",
 )
 
-# Map start{i}_ns and end{i}_ns to {i}
 start_df["op_idx"] = start_df["op_start"].str.extract(r'(\d+)').astype(int)
 end_df["op_idx"] = end_df["op_end"].str.extract(r'(\d+)').astype(int)
 
@@ -66,74 +65,66 @@ stats = (
 )
 
 
-categories = ["Workload", "End-To-End"]
-colors = {"Workload": "#1060FF", "End-To-End": "#FF2010"}
-filenames = {"Workload": "graph_workload.png", "End-To-End": "graph_end_to_end.png"}
+cat_data = stats[stats["Thread Type"] == "End-To-End"].sort_values("time_bin_ms")
+fig, axes = plt.subplots(2, 1, figsize=(9, 8), sharex=True)
 
-for cat in categories:
-    cat_data = stats[stats["Thread Type"] == cat].sort_values("time_bin_ms")
+ax_lat = axes[0]
+ax_lat.plot(
+    cat_data["time_bin_ms"],
+    cat_data["avg_latency_ms"],
+    label="Latency Avg",
+    color="#FF2010",
+    linewidth=2,
+    marker="o"
+)
+ax_lat.plot(
+    cat_data["time_bin_ms"],
+    cat_data["p95_latency_ms"],
+    label="Latency P95",
+    color="#FF2010",
+    linestyle="--",
+    linewidth=1.5,
+    marker="x",
+    alpha=0.85
+)
+ax_lat.fill_between(
+    cat_data["time_bin_ms"],
+    np.maximum(0, cat_data["avg_latency_ms"] - cat_data["std_latency_ms"]),
+    cat_data["avg_latency_ms"] + cat_data["std_latency_ms"],
+    color="#FF2010",
+    alpha=0.15,
+    label="Latency Std Dev"
+)
 
-    if cat_data.empty:
-        print(f"{cat} is empty")
-        continue
+ax_lat.set_title(f"End-To-End Latency (Averaged Across Epochs)", fontsize=13, fontweight='bold')
+ax_lat.set_ylabel("Latency [ms]", fontsize=11)
+ax_lat.legend(loc="upper right")
 
-    fig, axes = plt.subplots(2, 1, figsize=(9, 8), sharex=True)
 
-    ax_lat = axes[0]
-    ax_lat.plot(
-        cat_data["time_bin_ms"],
-        cat_data["avg_latency_ms"],
-        label="Latency Avg",
-        color=colors[cat],
-        linewidth=2,
-        marker="o"
-    )
-    ax_lat.plot(
-        cat_data["time_bin_ms"],
-        cat_data["p95_latency_ms"],
-        label="Latency P95",
-        color=colors[cat],
-        linestyle="--",
-        linewidth=1.5,
-        marker="x",
-        alpha=0.85
-    )
-    ax_lat.fill_between(
-        cat_data["time_bin_ms"],
-        np.maximum(0, cat_data["avg_latency_ms"] - cat_data["std_latency_ms"]),
-        cat_data["avg_latency_ms"] + cat_data["std_latency_ms"],
-        color=colors[cat],
-        alpha=0.15,
-        label="Latency Std Dev"
-    )
+cat_data = stats[stats["Thread Type"] == "Workload"].sort_values("time_bin_ms")
+ax_tput = axes[1]
+ax_tput.plot(
+    cat_data["time_bin_ms"],
+    cat_data["total_throughput"],
+    label="Throughput Total",
+    color="#1060FF",
+    linewidth=2,
+    marker="s"
+)
+ax_tput.fill_between(
+    cat_data["time_bin_ms"],
+    np.maximum(0, cat_data["total_throughput"] - cat_data["std_throughput"]),
+    cat_data["total_throughput"] + cat_data["std_throughput"],
+    color="#1060FF",
+    alpha=0.15,
+    label="Throughput Std Dev"
+)
 
-    ax_lat.set_title(f"{cat} Latency (Averaged Across Epochs)", fontsize=13, fontweight='bold')
-    ax_lat.set_ylabel("Latency [ms]", fontsize=11)
-    ax_lat.legend(loc="upper right")
+ax_tput.set_title(f"Workload Throughput (Averaged Across Epochs)", fontsize=13, fontweight='bold')
+ax_tput.set_ylabel("Throughput [ops/s]", fontsize=11)
+ax_tput.set_xlabel("Time [ms]", fontsize=11)
+ax_tput.legend(loc="upper right")
 
-    ax_tput = axes[1]
-    ax_tput.plot(
-        cat_data["time_bin_ms"],
-        cat_data["total_throughput"],
-        label="Throughput Total",
-        color=colors[cat],
-        linewidth=2,
-        marker="s"
-    )
-    ax_tput.fill_between(
-        cat_data["time_bin_ms"],
-        np.maximum(0, cat_data["total_throughput"] - cat_data["std_throughput"]),
-        cat_data["total_throughput"] + cat_data["std_throughput"],
-        color=colors[cat],
-        alpha=0.15,
-        label="Throughput Thread Variance"
-    )
-
-    ax_tput.set_title(f"{cat} Throughput (Averaged Across Epochs)", fontsize=13, fontweight='bold')
-    ax_tput.set_ylabel("Throughput [ops/s]", fontsize=11)
-    ax_tput.set_xlabel("Time [ms]", fontsize=11)
-    ax_tput.legend(loc="upper right")
-
-    plt.tight_layout()
-    plt.savefig(filenames[cat])
-    plt.close(fig)
+plt.tight_layout()
+plt.savefig("graph.png")
+plt.close(fig)

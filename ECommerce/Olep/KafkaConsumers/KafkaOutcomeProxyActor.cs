@@ -18,11 +18,11 @@ namespace ECommerce.Olep.KafkaConsumers
             var customerId = result.Message.Key;
             var outcomeEvent = result.Message.Value;
 
-            if (outcomeEvent.status != Status.OK)
+            /*if (outcomeEvent.status != Status.OK)
             {
                 // We currently have no reason to forward non OK events
                 return;
-            }
+            }*/
 
             // Forward to the relevant actors
             var actor = GrainFactory.GetGrain<ICustomerActor>(customerId);

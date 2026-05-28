@@ -23,10 +23,10 @@ namespace Client.Transaction
         private IDiscreteDistribution productPriceDistribution;   // the price of items
         private IDiscreteDistribution customerBalanceDistribution;// the customer balance
         private IDiscreteDistribution customerQtyDistribution;    // max qty a customer can buy for a product
+        private IDiscreteDistribution isCheckoutElseTop10;        // checkout = 0, top10 = 1
 
         public WorkloadGenerator(int numCustomerActor, int numProductActor)
         {
-
             this.numCustomerActor = numCustomerActor;
             this.numProductActor = numProductActor;
             // it will generate samples within range [a, b]
@@ -36,6 +36,7 @@ namespace Client.Transaction
             productPriceDistribution = new DiscreteUniform(1, 1000, new Random());
             customerBalanceDistribution = new DiscreteUniform(1, 10000, new Random());
             customerQtyDistribution = new DiscreteUniform(1, 10, new Random());
+            isCheckoutElseTop10 = new DiscreteUniform(0, 1, new Random());
 
             // wait until the client is created and connected
             InitiateClient();
@@ -119,43 +120,42 @@ namespace Client.Transaction
             return new Tuple<List<double>, bool>(balances, hasEverGotNegativeBalance);
         }
 
-        public async Task NewCheckOutOrder()
+        public async Task NewOrder()
         {
+            var isCheckout = isCheckoutElseTop10.Sample() == 0;
+            if (isCheckout)
+            {
+                var customerID = customerDistribution.Sample();
+                var productID = productDistribution.Sample();
+                var qty = customerQtyDistribution.Sample();
+                var price = await client.GetGrain<IProductActor>(productID).GetPrice();
+                var checkout = new Checkout(productID, price, qty);
+                await producer.Append(customerID, checkout);
+            }
+            else
+            {
+                await client.GetGrain<IAnalyticsActor>(0).Top10();
+            }
+        }
 
-            var customerID = customerDistribution.Sample();
+        // Used by the sampler to check the special customer end-to-end latency
+        public async Task NewCheckOutOrder(long customerID)
+        {
             var productID = productDistribution.Sample();
             var qty = customerQtyDistribution.Sample();
-
             var price = await client.GetGrain<IProductActor>(productID).GetPrice();
-
-            // Old code
-            //IStreamProvider streamProvider = client.GetStreamProvider(Constants.DefaultStreamProvider);
-            //IAsyncStream<Checkout> checkoutStream = streamProvider.GetStream<Checkout>(Constants.CheckoutNamespace, customerID.ToString());
-            //await checkoutStream.OnNextAsync(new Checkout(customerID, price, qty));
-
-            // Task 2 implemented here
-            // Usin Kafka producer instead of stream
             var checkout = new Checkout(productID, price, qty);
-            //await producer.Append(customerID, checkout);
-            _ = producer.Append(customerID, checkout);
-            // Do not await, just fire as many as possible.
-            return;
+            await producer.Append(customerID, checkout);
+        }
+        public async Task<int> GetCustomerProcessedCount(long customerId)
+        {
+            return await client.GetGrain<IAnalyticsActor>(0).CustomerOutcomeProcessedCount(customerId);
         }
 
         public async Task<string> GetTopTen()
         {
             List<KeyValuePair<long, double>> res = await client.GetGrain<IAnalyticsActor>(0).Top10();
             StringBuilder sb = new StringBuilder();
-            foreach (KeyValuePair<long, double> kv in res)
-            {
-                if (kv.Value > customerBalanceDistribution.Maximum)
-                {
-                    sb.AppendLine("Total amount spent larger that starting balance!");
-                    sb.AppendLine("Either due to a bug, or the server has not been restarted.");
-                    break;
-                }
-            }
-
             foreach (KeyValuePair<long, double> kv in res)
             {
                 sb.Append(kv.Key);

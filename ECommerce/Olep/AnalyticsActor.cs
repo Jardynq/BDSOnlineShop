@@ -13,6 +13,8 @@ namespace ECommerce.Olep
     {
         [Key(0)]
         public Dictionary<long, double> Query { get; set; }
+        [Key(1)]
+        public Dictionary<long, int> DebugQuery { get; set; }
 
         public object Clone()
         {
@@ -24,6 +26,7 @@ namespace ECommerce.Olep
         public AnalyticsActorState()
         {
             this.Query = new Dictionary<long, double>();
+            this.DebugQuery = new Dictionary<long, int>();
         }
     }
 
@@ -37,8 +40,6 @@ namespace ECommerce.Olep
 
         public Task Init()
         {
-            // Clear the query dict between workload runs
-            this.state.Query.Clear();
             return Task.CompletedTask;
         }
 
@@ -61,12 +62,17 @@ namespace ECommerce.Olep
 
         public Task UpdateAsync(Outcome outcome, StreamSequenceToken token = null)
         {
+            checkpointer.Tick();
+
             // If checkout is successful, update the total sales for the corresponding product
             if (outcome.status == Status.OK)
             {
                 var previous = this.state.Query.GetValueOrDefault(outcome.customerId, 0);
                 this.state.Query[outcome.customerId] = previous + outcome.total;
             }
+            // Increment the debug counter for end-to-end latency metrics.
+            var previousCount = this.state.DebugQuery.GetValueOrDefault(outcome.customerId, 0);
+            this.state.DebugQuery[outcome.customerId] = previousCount + 1;
             return Task.CompletedTask;
         }
 
@@ -75,6 +81,11 @@ namespace ECommerce.Olep
             // Get top ten customers by their value
             var top10 = this.state.Query.OrderByDescending(kv => kv.Value).Take(10).ToList();
             return await Task.FromResult(top10);
+        }
+
+        public async Task<int> CustomerOutcomeProcessedCount(long customerId)
+        {
+            return this.state.DebugQuery.GetValueOrDefault(customerId, 0);
         }
     }
 }

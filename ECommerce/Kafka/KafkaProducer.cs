@@ -14,13 +14,11 @@ public class KafkaProducer<TEvent> : IDisposable
         var config = new ProducerConfig
         {
             BootstrapServers = Constants.kafkaService,
-            /*
             EnableIdempotence = true,
             Acks = Acks.All,
             MessageSendMaxRetries = 10,
             RetryBackoffMs = 100,
             MessageTimeoutMs = 5000 // 5 seconds
-            */
         };
 
         var kafkaBuilder = new ProducerBuilder<long, TEvent>(config)

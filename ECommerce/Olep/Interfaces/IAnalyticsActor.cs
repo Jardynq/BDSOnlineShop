@@ -13,5 +13,10 @@ namespace ECommerce.Olep.Interfaces
 
         // accessed by transaction client
         Task<List<KeyValuePair<long, double>>> Top10();
+
+        // accessed by transaction client to determine end to end latency.
+        // I.e. how long it takes for a checkout request being sent, till the outcome
+        // lands at the analytics actor.
+        Task<int> CustomerOutcomeProcessedCount(long customerId);
     }
 }

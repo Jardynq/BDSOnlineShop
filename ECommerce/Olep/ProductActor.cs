@@ -74,6 +74,8 @@ namespace ECommerce.Olep
         // Task 1 implemented here
         public async Task ProcessInventoryRequest(Inventory inventory, StreamSequenceToken token)
         {
+            checkpointer.Tick();
+
             // Check inventory quantity
             if (this.state.Quantity < inventory.quantity)
             {

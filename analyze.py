@@ -162,6 +162,7 @@ def plotGraph(select : str):
     fig1.savefig(select + "_throughput-graph.png")
     plt.close(fig1)
 
-plotGraph("1")
-plotGraph("5")
+# Use this to select the number of proxies
+# So "10" means it selects a file 10-x-y_latencies.csv, 
+# where x and y are num customers and num products respectively
 plotGraph("10")

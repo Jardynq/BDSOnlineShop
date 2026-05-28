@@ -43,10 +43,12 @@ namespace ECommerce.Olep
             if (this.quantity < inventory.quantity)
             {
                 // Add 90 units to the inventory if the current inventory is not enough
+                // We do not remove inventory in this case by assignment description
                 this.quantity = inventory.quantity + 90;
             }
-            this.quantity -= inventory.quantity;
-
+            else {
+                this.quantity -= inventory.quantity;
+            }
             // Get outcome stream and send OK balance message to analytics actor            
             var outcomeStream = streamProvider.GetStream<Outcome>(this.outcomeStreamId);
             var outcomeEvent = new Outcome(inventory.customerId, this.id, inventory.price * inventory.quantity, Status.OK);

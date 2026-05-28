@@ -42,54 +42,28 @@ df["Thread Type"] = np.where(df["thread"] == max_thread, "End-To-End", "Workload
 bin_size_ms = 1000.0
 df["time_bin_ms"] = (df["start_ms"] // bin_size_ms) * bin_size_ms
 
-
-# Aggregate raw operations within each specific epoch window first
 epoch_level_stats = (
     df.groupby(["time_bin_ms", "Thread Type", "epoch"])
     .agg(
         avg_latency_ms=("latency_ms", "mean"),
-        std_latency_ms=("latency_ms", "std"),
         p95_latency_ms=("latency_ms", lambda x: np.percentile(x, 95)),
-        total_ops=("latency_ms", "count")
+        total_ops=("latency_ms", "count"),
     )
     .reset_index()
 )
-
-# Calculate what the absolute throughput rate was for that epoch slice
 epoch_level_stats["epoch_throughput"] = epoch_level_stats["total_ops"] / (bin_size_ms / 1000.0)
 
-per_thread_throughput = (
-    df.groupby(["time_bin_ms", "Thread Type", "epoch", "thread"])
-    .agg(ops=("latency_ms", "count"))
-    .reset_index()
-)
-per_thread_throughput["throughput"] = per_thread_throughput["ops"] / (bin_size_ms / 1000.0)
-epoch_thread_std = (
-    per_thread_throughput.groupby(["time_bin_ms", "Thread Type", "epoch"])
-    .agg(epoch_std=("throughput", "std"))
-    .reset_index()
-)
-tput_std = (
-    epoch_thread_std.groupby(["time_bin_ms", "Thread Type"])
-    .agg(std_throughput=("epoch_std", "mean"))
-    .reset_index()
-)
-
-# Avg across epochs
-system_stats = (
+stats = (
     epoch_level_stats.groupby(["time_bin_ms", "Thread Type"])
     .agg(
         avg_latency_ms=("avg_latency_ms", "mean"),
-        std_latency_ms=("std_latency_ms", "mean"),
         p95_latency_ms=("p95_latency_ms", "mean"),
-        total_throughput=("epoch_throughput", "mean")
+        std_latency_ms=("avg_latency_ms", "std"),
+        total_throughput=("epoch_throughput", "mean"),
+        std_throughput=("epoch_throughput", "std"),
     )
     .reset_index()
 )
-
-stats = pd.merge(system_stats, tput_std, on=["time_bin_ms", "Thread Type"], how="left").fillna(0)
-
-
 
 
 categories = ["Workload", "End-To-End"]

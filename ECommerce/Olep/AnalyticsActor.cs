@@ -10,9 +10,11 @@ namespace ECommerce.Olep
     public class AnalyticsActor : Grain, IAnalyticsActor
     {
         private readonly Dictionary<long, double> query;
+        private readonly Dictionary<long, int> DebugQuery;
 
         public AnalyticsActor()
         {
+            this.DebugQuery = new Dictionary<long, int>();
             this.query = new Dictionary<long, double>();
         }
 
@@ -41,6 +43,9 @@ namespace ECommerce.Olep
                 var previous = query.GetValueOrDefault(outcome.productId, 0);
                 this.query[outcome.productId] = previous + outcome.total;
             }
+
+            var previousCount = this.DebugQuery.GetValueOrDefault(outcome.customerId, 0);
+            this.DebugQuery[outcome.customerId] = previousCount + 1;
             return Task.CompletedTask;
         }
 
@@ -50,6 +55,10 @@ namespace ECommerce.Olep
             // Get top ten customers by their value
             var top10 = this.query.OrderByDescending(kv => kv.Value).Take(10).ToList();
             return await Task.FromResult(top10);
+        }
+        public async Task<int> CustomerOutcomeProcessedCount(long customerId)
+        {
+            return this.DebugQuery.GetValueOrDefault(customerId, 0);
         }
     }
 }

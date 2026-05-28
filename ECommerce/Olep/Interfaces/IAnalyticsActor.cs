@@ -7,5 +7,6 @@
 
         // accessed by transaction client
         Task<List<KeyValuePair<long, double>>> Top10();
+        Task<int> CustomerOutcomeProcessedCount(long customerId);
     }
 }

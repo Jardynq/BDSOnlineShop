@@ -4,9 +4,12 @@ namespace Client.Transaction
 {
     internal class TransactionClient
     {
+        // These are the three variables we modify during evaluation
+        // I.e. we modify only the amount of actors 
         private int numProxyActor = 10;
         private int numCustomerActor = 10;
         private int numProductActor = 100;
+
         private int numEpochs = 10;
         private int numWarmupEpochs = 2;
 
@@ -134,7 +137,7 @@ namespace Client.Transaction
                     lines.Add(string.Join(",", row));
                 }
             }
-            File.WriteAllLines($"latencies.csv", lines);
+            File.WriteAllLines($"{numProxyActor}-{numCustomerActor}-{numProductActor}_latencies.csv", lines);
         }
 
         // ================================================================================================================

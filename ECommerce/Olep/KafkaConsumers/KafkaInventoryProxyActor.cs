@@ -30,8 +30,9 @@ namespace ECommerce.Olep.KafkaConsumers
             }
             catch (TimeoutException)
             {
+                // Throw an error so that the proxy actor base catches the error
+                // The same offset is tried by this consumer the next time the consumer is called since it is not committed (by Consume base function since it is thrown)
                 Console.WriteLine($"Inventory processing timed out for product {productId} in partition {this.id}");
-                // TODO, should we retry or just fail the grain?
                 throw;
             }
         }

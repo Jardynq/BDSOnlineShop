@@ -7,6 +7,7 @@ using Orleans.Concurrency;
 using Orleans.Streams;
 using Utilities;
 using ECommerce.Olep.Token;
+using System.Text.Json;
 
 namespace ECommerce.Olep
 {
@@ -17,22 +18,20 @@ namespace ECommerce.Olep
         public double Balance { get; set; }
         // Event number to be able to ignore duplicates 
         [Key(1)]
-        public long LastCheckoutEventSequenceNumber { get; set; }
+        public Dictionary<int, long> LastCheckoutEventSequenceNumbers { get; set; }
         [Key(2)]
-        public long LastOutcomeEventSequenceNumber { get; set; }
+        public Dictionary<int, long> LastOutcomeEventSequenceNumbers { get; set; }
         public object Clone()
         {
-            return new CustomerActorState
-            {
-                Balance = this.Balance,
-                LastCheckoutEventSequenceNumber = this.LastCheckoutEventSequenceNumber
-            };
+            string temp = JsonSerializer.Serialize(this);
+            return JsonSerializer.Deserialize<CustomerActorState>(temp);
         }
 
         public CustomerActorState()
         {
             this.Balance = 0;
-            this.LastCheckoutEventSequenceNumber = 0;
+            this.LastCheckoutEventSequenceNumbers = new Dictionary<int, long>();
+            this.LastOutcomeEventSequenceNumbers = new Dictionary<int, long>();
         }
     }
 
@@ -88,11 +87,14 @@ namespace ECommerce.Olep
             if (token is ConcreteToken concreteToken)
             {
                 // Check if the event is a duplicate by comparing the sequence number (timestamp) with the last processed event
-                if (concreteToken.SequenceNumber <= this.state.LastCheckoutEventSequenceNumber)
+                if (this.state.LastCheckoutEventSequenceNumbers.TryGetValue(concreteToken.EventIndex, out long lastSequenceNumber))
                 {
-                    // If so, just return
-                    // Console.WriteLine($"Duplicate event detected for customer actor {this.id} in checkout processing {concreteToken.SequenceNumber} vs {this.state.LastCheckoutEventSequenceNumber}");
-                    return;
+                    if (concreteToken.SequenceNumber <= lastSequenceNumber)
+                    {
+                        // If so, just return
+                        Console.WriteLine($"Duplicate event detected for customer actor {this.id} in checkout processing");
+                        return;
+                    }
                 }
             }
 
@@ -119,7 +121,14 @@ namespace ECommerce.Olep
             // The request has now been processed fully and we note the sequence number (timestamp) on the token to be able to ignore duplicates later
             if (token is ConcreteToken _concreteToken)
             {
-                this.state.LastCheckoutEventSequenceNumber = _concreteToken.SequenceNumber;
+                if (state.LastCheckoutEventSequenceNumbers.ContainsKey(_concreteToken.EventIndex))
+                {
+                    state.LastCheckoutEventSequenceNumbers[_concreteToken.EventIndex] = _concreteToken.SequenceNumber;
+                }
+                else
+                {
+                    state.LastCheckoutEventSequenceNumbers.Add(_concreteToken.EventIndex, _concreteToken.SequenceNumber);
+                }
             }
         }
 
@@ -130,12 +139,15 @@ namespace ECommerce.Olep
             if (token is ConcreteToken concreteToken)
             {
                 // Check if the event is a duplicate by comparing the sequence number (timestamp) with the last processed event
-                if (concreteToken.SequenceNumber <= this.state.LastOutcomeEventSequenceNumber)
+                if (this.state.LastOutcomeEventSequenceNumbers.TryGetValue(concreteToken.EventIndex, out long lastSequenceNumber))
                 {
-                    // If so, just write to console and return 
-                    // Console.WriteLine($"Duplicate event detected for customer actor {this.id} in outcome processing");
-                    // return;
-                }
+                    if (concreteToken.SequenceNumber <= lastSequenceNumber)
+                    {
+                        // If so, just write to console and return 
+                        // Console.WriteLine($"Duplicate event detected for customer actor {this.id} in outcome processing");
+                        return;
+                    }
+                }       
             }
 
             // Realistically we should undo the reservation here in case the outcome failed,
@@ -146,6 +158,19 @@ namespace ECommerce.Olep
 
             // If, for example, the inventory could not resupply,
             // then we would need to undo the reservation here.
+
+            // The request has now been processed fully and we note the sequence number (timestamp) on the token to be able to ignore duplicates later
+            if (token is ConcreteToken _concreteToken)
+            {
+                if (state.LastOutcomeEventSequenceNumbers.ContainsKey(_concreteToken.EventIndex))
+                {
+                    state.LastOutcomeEventSequenceNumbers[_concreteToken.EventIndex] = _concreteToken.SequenceNumber;
+                }
+                else
+                {
+                    state.LastOutcomeEventSequenceNumbers.Add(_concreteToken.EventIndex, _concreteToken.SequenceNumber);
+                }
+            }
         }
 
         public Task<double> GetBalance()

@@ -7,6 +7,7 @@ using Orleans.Concurrency;
 using Orleans.Streams;
 using Utilities;
 using ECommerce.Olep.Token;
+using System.Text.Json;
 
 namespace ECommerce.Olep
 {
@@ -18,22 +19,18 @@ namespace ECommerce.Olep
         [Key(1)]
         public double Price { get; set; }
         [Key(2)]
-        public long LastInventoryEventSequenceNumber { get; set; }
+        public Dictionary<int, long> LastInventoryEventSequenceNumbers { get; set; }
         public object Clone()
         {
-            return new ProductActorState
-            {
-                Quantity = this.Quantity,
-                Price = this.Price,
-                LastInventoryEventSequenceNumber = this.LastInventoryEventSequenceNumber
-            };
+            string temp = JsonSerializer.Serialize(this);
+            return JsonSerializer.Deserialize<ProductActorState>(temp);
         }
 
         public ProductActorState()
         {
             this.Quantity = 0;
             this.Price = 0;
-            this.LastInventoryEventSequenceNumber = 0;
+            this.LastInventoryEventSequenceNumbers = new Dictionary<int, long>();
         }
     }
 
@@ -83,11 +80,14 @@ namespace ECommerce.Olep
             if (token is ConcreteToken concreteToken)
             {
                 // Check if the event is a duplicate by comparing the sequence number (timestamp) with the last processed event
-                if (concreteToken.SequenceNumber <= this.state.LastInventoryEventSequenceNumber)
+                if (this.state.LastInventoryEventSequenceNumbers.TryGetValue(concreteToken.EventIndex, out long lastSequenceNumber))
                 {
-                    // If so, just return
-                    // Console.WriteLine($"Duplicate event detected for product actor {this.id} in inventory processing");
-                    return;
+                    if (concreteToken.SequenceNumber <= lastSequenceNumber)
+                    {
+                        // If so, just return
+                        Console.WriteLine($"Duplicate event detected for customer actor {this.id} in checkout processing");
+                        return;
+                    }
                 }
             }
 
@@ -107,7 +107,14 @@ namespace ECommerce.Olep
             // The request has now been processed fully and we note the sequence number (timestamp) on the token to be able to ignore duplicates later
             if (token is ConcreteToken _concreteToken)
             {
-                this.state.LastInventoryEventSequenceNumber = _concreteToken.SequenceNumber;
+                if (state.LastInventoryEventSequenceNumbers.ContainsKey(_concreteToken.EventIndex))
+                {
+                    state.LastInventoryEventSequenceNumbers[_concreteToken.EventIndex] = _concreteToken.SequenceNumber;
+                }
+                else
+                {
+                    state.LastInventoryEventSequenceNumbers.Add(_concreteToken.EventIndex, _concreteToken.SequenceNumber);
+                }
             }
         }
 

@@ -17,7 +17,7 @@ namespace ECommerce.Olep.KafkaConsumers
         {
             var customerId = result.Message.Key;
             var outcomeEvent = result.Message.Value;
-            var timeStamp = result.Message.Timestamp.UtcDateTime.Ticks;
+            var offset = result.Offset.Value;
 
             if (outcomeEvent.status != Status.OK)
             {
@@ -31,7 +31,7 @@ namespace ECommerce.Olep.KafkaConsumers
 
             try
             {
-                var token = new ConcreteToken(timeStamp);
+                var token = new ConcreteToken(offset, this.id);
                 await Task.WhenAll(new Task[] {
                     customerActor.ProcessOutcome(outcomeEvent, token),
                     analyticsActor.UpdateAsync(outcomeEvent, token),

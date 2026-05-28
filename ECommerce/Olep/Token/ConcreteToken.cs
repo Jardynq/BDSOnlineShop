@@ -8,7 +8,7 @@ namespace ECommerce.Olep.Token
 
         public override int EventIndex { get; protected set ; }
 
-        public ConcreteToken(long sequenceNumber, int eventIndex = 0)
+        public ConcreteToken(long sequenceNumber, int eventIndex)
         {
             this.SequenceNumber = sequenceNumber;
             this.EventIndex = eventIndex;

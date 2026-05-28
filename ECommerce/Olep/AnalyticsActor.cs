@@ -15,10 +15,9 @@ namespace ECommerce.Olep
         [Key(0)]
         public Dictionary<long, double> Query { get; set; }
         [Key(1)]
-        public long LastOutcomeEventSequenceNumber { get; set; }
+        public Dictionary<int, long> LastOutcomeEventSequenceNumbers { get; set; }
         public object Clone()
         {
-            // Why is C# like this...
             string temp = JsonSerializer.Serialize(this);
             return JsonSerializer.Deserialize<AnalyticsActorState>(temp);
         }
@@ -26,7 +25,7 @@ namespace ECommerce.Olep
         public AnalyticsActorState()
         {
             this.Query = new Dictionary<long, double>();
-            this.LastOutcomeEventSequenceNumber = 0;
+            this.LastOutcomeEventSequenceNumbers = new Dictionary<int, long>();
         }
     }
 
@@ -67,15 +66,18 @@ namespace ECommerce.Olep
             if (token is ConcreteToken concreteToken)
             {
                 // Check if the event is a duplicate by comparing the sequence number (timestamp) with the last processed event
-                if (concreteToken.SequenceNumber <= this.state.LastOutcomeEventSequenceNumber)
+                if (this.state.LastOutcomeEventSequenceNumbers.TryGetValue(concreteToken.EventIndex, out long lastSequenceNumber))
                 {
-                    // TODO TODO
-                    // OBS currently disabled for analytics actor, since it receives events from many producers all with different sequence numbers
-                    // this ruins the purpose of this, since the single actor client cannot distinguish yet between between the producers
-                    // It might not work on the other actors either since all consumers may contact all grains, but it happens less
-                    // we should fix this pronto
-                    // Console.WriteLine($"Duplicate event detected for analytics actor 0");
-                    // return Task.CompletedTask;
+                    if (concreteToken.SequenceNumber <= lastSequenceNumber)
+                    {
+                        // TODO TODO
+                        // OBS currently disabled for analytics actor, since it receives events from many producers all with different sequence numbers
+                        // this ruins the purpose of this, since the single actor client cannot distinguish yet between between the producers
+                        // it might not work on the other actors either since all consumers may contact all grains, but it happens less
+                        // we should fix this pronto
+                        Console.WriteLine($"Duplicate event detected for analytics actor 0 on id {concreteToken.EventIndex}");
+                        return Task.CompletedTask;
+                    }
                 }
             }
 
@@ -89,7 +91,14 @@ namespace ECommerce.Olep
             // The request has now been processed fully and we note the sequence number (timestamp) on the token to be able to ignore duplicates later
             if (token is ConcreteToken _concreteToken)
             {
-                this.state.LastOutcomeEventSequenceNumber = _concreteToken.SequenceNumber;
+                if (state.LastOutcomeEventSequenceNumbers.ContainsKey(_concreteToken.EventIndex))
+                {
+                    state.LastOutcomeEventSequenceNumbers[_concreteToken.EventIndex] = _concreteToken.SequenceNumber;
+                }
+                else
+                {
+                    state.LastOutcomeEventSequenceNumbers.Add(_concreteToken.EventIndex, _concreteToken.SequenceNumber);
+                }
             }
             return Task.CompletedTask;
         }

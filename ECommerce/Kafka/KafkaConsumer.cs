@@ -23,7 +23,7 @@ public class KafkaConsumer<TEvent> : IDisposable
 
         this.topic = topic;
         this.consumer = kafkaBuilder.Build();
-        this.consumer.Assign(new TopicPartition(topic, new Partition(partition)));
+        this.consumer.Subscribe(topic);
     }
 
     // Implemented for task 2

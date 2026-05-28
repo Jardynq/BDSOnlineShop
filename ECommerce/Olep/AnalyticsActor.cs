@@ -71,7 +71,7 @@ namespace ECommerce.Olep
         public Task UpdateAsync(Outcome outcome, StreamSequenceToken token = null)
         {
 
-            if (token is ConcreteToken concreteToken)
+            if (token is KafkaSequenceToken concreteToken)
             {
                 // Check if the event is a duplicate by comparing the sequence number (timestamp) with the last processed event
                 if (this.state.ProcessedOutcomeEvent.TryGetValue(concreteToken.EventIndex, out HashSet<long> set))
@@ -97,7 +97,7 @@ namespace ECommerce.Olep
             this.state.DebugQuery[outcome.customerId] = previousCount + 1;
 
             // The request has now been processed fully and we note the sequence number (timestamp) on the token to be able to ignore duplicates later
-            if (token is ConcreteToken _concreteToken)
+            if (token is KafkaSequenceToken _concreteToken)
             {
                 if (state.ProcessedOutcomeEvent.ContainsKey(_concreteToken.EventIndex))
                 {

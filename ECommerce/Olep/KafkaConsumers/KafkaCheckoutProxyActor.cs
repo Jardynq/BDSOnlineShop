@@ -28,7 +28,7 @@ namespace ECommerce.Olep.KafkaConsumers
             var actor = GrainFactory.GetGrain<ICustomerActor>(customerId);
             try
             {
-                var token = new ConcreteToken(offset, partition);
+                var token = new KafkaSequenceToken(offset, partition);
                 await actor.ProcessCheckout(checkoutEvent, token);
             }
             catch (TimeoutException)

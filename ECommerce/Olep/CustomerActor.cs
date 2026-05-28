@@ -2,12 +2,12 @@
 using ECommerce.Olep.Checkpointing;
 using ECommerce.Olep.Interfaces;
 using ECommerce.Olep.Schema;
+using ECommerce.Olep.Token;
 using MessagePack;
 using Orleans.Concurrency;
 using Orleans.Streams;
-using Utilities;
-using ECommerce.Olep.Token;
 using System.Text.Json;
+using Utilities;
 
 namespace ECommerce.Olep
 {
@@ -81,10 +81,10 @@ namespace ECommerce.Olep
         }
 
         public async Task ProcessCheckout(Checkout checkout, StreamSequenceToken token = null)
-        {   
+        {
             checkpointer.Tick();
 
-            if (token is ConcreteToken concreteToken)
+            if (token is KafkaSequenceToken concreteToken)
             {
                 // Check if the event is a duplicate by comparing the sequence number (timestamp) with the last processed event
                 if (this.state.LastCheckoutEventSequenceNumbers.TryGetValue(concreteToken.EventIndex, out long lastSequenceNumber))
@@ -119,7 +119,7 @@ namespace ECommerce.Olep
             _ = inventoryProducer.Append(checkout.productId, inventoryEvent);
 
             // The request has now been processed fully and we note the sequence number (timestamp) on the token to be able to ignore duplicates later
-            if (token is ConcreteToken _concreteToken)
+            if (token is KafkaSequenceToken _concreteToken)
             {
                 if (state.LastCheckoutEventSequenceNumbers.ContainsKey(_concreteToken.EventIndex))
                 {
@@ -134,7 +134,7 @@ namespace ECommerce.Olep
 
         public async Task ProcessOutcome(Outcome outcome, StreamSequenceToken token = null)
         {
-            if (token is ConcreteToken concreteToken)
+            if (token is KafkaSequenceToken concreteToken)
             {
                 // Check if the event is a duplicate by comparing the sequence number (timestamp) with the last processed event
                 if (this.state.LastOutcomeEventSequenceNumbers.TryGetValue(concreteToken.EventIndex, out long lastSequenceNumber))
@@ -145,7 +145,7 @@ namespace ECommerce.Olep
                         // Console.WriteLine($"Duplicate event detected for customer actor {this.id} in outcome processing");
                         return;
                     }
-                }       
+                }
             }
 
             // Realistically we should undo the reservation here in case the outcome failed,
@@ -158,7 +158,7 @@ namespace ECommerce.Olep
             // then we would need to undo the reservation here.
 
             // The request has now been processed fully and we note the sequence number (timestamp) on the token to be able to ignore duplicates later
-            if (token is ConcreteToken _concreteToken)
+            if (token is KafkaSequenceToken _concreteToken)
             {
                 if (state.LastOutcomeEventSequenceNumbers.ContainsKey(_concreteToken.EventIndex))
                 {

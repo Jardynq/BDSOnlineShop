@@ -4,6 +4,7 @@ namespace Client.Transaction
 {
     internal class TransactionClient
     {
+        private int numProxyActor = 10;
         private int numCustomerActor = 10;
         private int numProductActor = 100;
         private int numEpochs = 10;
@@ -24,7 +25,7 @@ namespace Client.Transaction
             // Start + end ts per transaction per thread per epoch.
             var allTimestamps = new List<List<List<Tuple<long, long>>>>();
             // numCustomerActor + 1 for the extra sample actor that we use to check end-to-end latency
-            var workload = new WorkloadGenerator(numCustomerActor + 1, numProductActor);
+            var workload = new WorkloadGenerator(numCustomerActor + 1, numProductActor, numProxyActor);
             for (int epoch = 0; epoch < numEpochs + numWarmupEpochs; epoch++)
             {
                 Console.WriteLine($"\n\n============================== Epoch {epoch} ==============================");
@@ -141,7 +142,7 @@ namespace Client.Transaction
         {
             var thread = (int)obj;
             var numEmitTransaction = 0;
-            var workload = new WorkloadGenerator(numCustomerActor, numProductActor);
+            var workload = new WorkloadGenerator(numCustomerActor, numProductActor, 0);
             var watch = new Stopwatch();
             var thisThreadLatencies = threadTimestamps[thread];
 
@@ -171,7 +172,7 @@ namespace Client.Transaction
         {
             var customerId = numCustomerActor + 1;
             var numEmitTransaction = 0;
-            var workload = new WorkloadGenerator(1, 1);
+            var workload = new WorkloadGenerator(1, 1, 0);
             var watch = new Stopwatch();
             var thisThreadLatencies = threadTimestamps[numCustomerThread];
             var currentCount = 0;

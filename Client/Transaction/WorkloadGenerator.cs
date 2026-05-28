@@ -10,6 +10,7 @@ namespace Client.Transaction
     {
         private readonly int numCustomerActor;
         private readonly int numProductActor;
+        private readonly int numProxyActor;
         private OrleansClientManager clientManager;
         private IClusterClient client;
         private bool isClientConnected = false;
@@ -25,10 +26,11 @@ namespace Client.Transaction
         private IDiscreteDistribution customerQtyDistribution;    // max qty a customer can buy for a product
         private IDiscreteDistribution isCheckoutElseTop10;        // checkout = 0, top10 = 1
 
-        public WorkloadGenerator(int numCustomerActor, int numProductActor)
+        public WorkloadGenerator(int numCustomerActor, int numProductActor, int numProxyActor)
         {
             this.numCustomerActor = numCustomerActor;
             this.numProductActor = numProductActor;
+            this.numProxyActor = numProxyActor;
             // it will generate samples within range [a, b]
             customerDistribution = new DiscreteUniform(0, numCustomerActor - 1, new Random());
             productDistribution = new DiscreteUniform(0, numProductActor - 1, new Random());
@@ -76,6 +78,18 @@ namespace Client.Transaction
                 var amount = productQtyDistribution.Sample();
                 var productActor = client.GetGrain<IProductActor>(i);
                 tasks.Add(productActor.Init(price, amount));
+            }
+
+            for (int i = 0; i < numProxyActor; i++)
+            {
+                var checkoutConsumer = client.GetGrain<IKafkaCheckoutProxyActor>(i);
+                tasks.Add(checkoutConsumer.StartFromBootstrap());
+
+                var inventoryConsumer = client.GetGrain<IKafkaInventoryProxyActor>(i);
+                tasks.Add(inventoryConsumer.StartFromBootstrap());
+
+                var outcomeConsumer = client.GetGrain<IKafkaOutcomeProxyActor>(i);
+                tasks.Add(outcomeConsumer.StartFromBootstrap());
             }
 
             await Task.WhenAll(tasks);

@@ -77,7 +77,7 @@ namespace ECommerce.Olep
         {
             checkpointer.Tick();
 
-            if (token is ConcreteToken concreteToken)
+            if (token is KafkaSequenceToken concreteToken)
             {
                 // Check if the event is a duplicate by comparing the sequence number (timestamp) with the last processed event
                 if (this.state.LastInventoryEventSequenceNumbers.TryGetValue(concreteToken.EventIndex, out long lastSequenceNumber))
@@ -98,7 +98,8 @@ namespace ECommerce.Olep
                 // We do not remove inventory in this case by assignment description
                 this.state.Quantity = inventory.quantity + 90;
             }
-            else {
+            else
+            {
                 this.state.Quantity -= inventory.quantity;
             }
 
@@ -108,7 +109,7 @@ namespace ECommerce.Olep
             _ = outcomeProducer.Append(inventory.customerId, outcomeEvent);
 
             // The request has now been processed fully and we note the sequence number (timestamp) on the token to be able to ignore duplicates later
-            if (token is ConcreteToken _concreteToken)
+            if (token is KafkaSequenceToken _concreteToken)
             {
                 if (state.LastInventoryEventSequenceNumbers.ContainsKey(_concreteToken.EventIndex))
                 {

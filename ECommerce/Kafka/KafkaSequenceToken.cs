@@ -2,13 +2,13 @@ using Orleans.Streams;
 
 namespace ECommerce.Olep.Token
 {
-    public class ConcreteToken : StreamSequenceToken
+    public class KafkaSequenceToken : StreamSequenceToken
     {
         public override long SequenceNumber { get; protected set ; }
 
         public override int EventIndex { get; protected set ; }
 
-        public ConcreteToken(long sequenceNumber, int eventIndex)
+        public KafkaSequenceToken(long sequenceNumber, int eventIndex)
         {
             this.SequenceNumber = sequenceNumber;
             this.EventIndex = eventIndex;

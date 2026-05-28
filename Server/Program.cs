@@ -1,9 +1,12 @@
-﻿using Microsoft.Extensions.DependencyInjection;
+﻿using ECommerce.Kafka;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Orleans.Configuration;
 using Orleans.Serialization;
 using Utilities;
+
+const int NUM_PARTITIONS = 10;
 
 using var host = new HostBuilder()
     .UseOrleans(builder =>
@@ -15,15 +18,7 @@ using var host = new HostBuilder()
                 options.ClusterId = Constants.ClusterId;
                 options.ServiceId = Constants.ServiceId;
             })
-            //.AddMemoryStreams(Constants.DefaultStreamProvider)
-            //.AddMemoryGrainStorage("PubSubStore")
             .UseInMemoryReminderService()
-            .UseDashboard(options =>
-            {
-                options.Port = 12345;
-                options.Username = "admin";
-                options.Password = "admin";
-            })
             .ConfigureLogging(logging =>
             {
                 logging.ClearProviders();
@@ -35,12 +30,14 @@ using var host = new HostBuilder()
                 ser.AddNewtonsoftJsonSerializer(isSupported: type => type.Namespace.StartsWith("ECommerce.Olep"));
             });
     })
-    .ConfigureServices(services =>
-    {
-        // Ensure that a Kafka consumer proxy actor is created for each partition of each topic.
-        services.AddHostedService<KafkaBootstrapService>();
-    })
     .Build();
+
+Task.WaitAll(new Task[]
+    {   KafkaTopic.InitTopic(Constants.CheckoutNamespace, NUM_PARTITIONS),
+        KafkaTopic.InitTopic(Constants.InventoryNamespace, NUM_PARTITIONS),
+        KafkaTopic.InitTopic(Constants.OutcomeNamespace, NUM_PARTITIONS),
+    }
+);
 
 await host.StartAsync();
 Console.WriteLine("\n *************************************************************************");

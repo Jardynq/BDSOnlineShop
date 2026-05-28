@@ -32,7 +32,7 @@ namespace ECommerce.Olep.KafkaConsumers
 
             try
             {
-                var token = new ConcreteToken(offset, partition);
+                var token = new KafkaSequenceToken(offset, partition);
                 await Task.WhenAll(new Task[] {
                     customerActor.ProcessOutcome(outcomeEvent, token),
                     analyticsActor.UpdateAsync(outcomeEvent, token),

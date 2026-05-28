@@ -60,7 +60,7 @@ namespace ECommerce.Olep.KafkaConsumers
             }
 
             // Set up an Orleans timer to continuously poll Kafka
-            Console.WriteLine($"Starting Kafka {this.topic} proxy for partition {this.id}...");
+            Console.WriteLine($"Starting Kafka {this.topic} proxy {this.id} ...");
             DelayDeactivation(TimeSpan.MaxValue);
             timer = RegisterTimer(ConsumeAsync, null, TimeSpan.FromMilliseconds(10), TimeSpan.FromMilliseconds(50));
             this.isInitialized = true;
@@ -130,13 +130,13 @@ namespace ECommerce.Olep.KafkaConsumers
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"Error processing message from {this.topic} partition {this.id}: {ex.Message}");
+                    Console.WriteLine($"Error processing message from {this.topic}, proxy {this.id}: {ex.Message}");
                     return;
                 }
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error in {topic} partition {this.id}: {ex.Message}");
+                Console.WriteLine($"Error in {this.topic}, proxy {this.id}: {ex.Message}");
                 return;
             }
         }

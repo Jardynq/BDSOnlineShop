@@ -2,9 +2,11 @@
 using ECommerce.Olep.Interfaces;
 using ECommerce.Olep.Schema;
 using Orleans.Concurrency;
-
+using ECommerce.Olep.Token;
 namespace ECommerce.Olep.KafkaConsumers
 {
+
+
     [Reentrant]
     public class KafkaCheckoutProxyActor : KafkaProxyActorBase<Checkout>, IKafkaCheckoutProxyActor
     {
@@ -19,19 +21,24 @@ namespace ECommerce.Olep.KafkaConsumers
         {
             var customerId = result.Message.Key;
             var checkoutEvent = result.Message.Value;
+            var offset = result.Offset.Value;
+            var partition = result.Partition.Value;
 
             // Forward to the relevant actor
             var actor = GrainFactory.GetGrain<ICustomerActor>(customerId);
             try
             {
-                await actor.ProcessCheckout(checkoutEvent, null);
+                var token = new ConcreteToken(offset, partition);
+                await actor.ProcessCheckout(checkoutEvent, token);
             }
             catch (TimeoutException)
             {
-                Console.WriteLine($"Checkout processing timed out for custoemr {customerId} in partition {this.id}");
+                Console.WriteLine($"Checkout processing timed out for customer {customerId} in partition {this.id}");
                 // TODO, should we retry or just fail the grain?
                 throw;
             }
         }
     }
 }
+
+

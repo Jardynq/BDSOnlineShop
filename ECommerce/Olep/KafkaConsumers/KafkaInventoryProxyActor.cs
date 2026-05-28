@@ -1,6 +1,7 @@
 ﻿using Confluent.Kafka;
 using ECommerce.Olep.Interfaces;
 using ECommerce.Olep.Schema;
+using ECommerce.Olep.Token;
 
 namespace ECommerce.Olep.KafkaConsumers
 {
@@ -17,12 +18,15 @@ namespace ECommerce.Olep.KafkaConsumers
         {
             var productId = result.Message.Key;
             var inventoryEvent = result.Message.Value;
+            var offset = result.Offset.Value;
+            var partition = result.Partition.Value;
 
             // Forward to the relevant actor
             var actor = GrainFactory.GetGrain<IProductActor>(productId);
             try
             {
-                await actor.ProcessInventoryRequest(inventoryEvent, null);
+                var token = new ConcreteToken(offset, partition);
+                await actor.ProcessInventoryRequest(inventoryEvent, token);
             }
             catch (TimeoutException)
             {

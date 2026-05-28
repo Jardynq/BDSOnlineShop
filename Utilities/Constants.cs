@@ -1,4 +1,4 @@
-namespace Utilities
+﻿namespace Utilities
 {
     public class Constants
     {
@@ -21,5 +21,6 @@ namespace Utilities
         public const string kafkaService = "localhost:9092";
         public const string zooKeeperService = "localhost:2181";
 
+        public const int StoreCapacity = 128;
     }
 }

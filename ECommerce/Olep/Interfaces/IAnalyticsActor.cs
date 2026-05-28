@@ -18,5 +18,8 @@ namespace ECommerce.Olep.Interfaces
         // I.e. how long it takes for a checkout request being sent, till the outcome
         // lands at the analytics actor.
         Task<int> CustomerOutcomeProcessedCount(long customerId);
+
+        // Added for sanity check
+        Task<double> GetSumOfAllBalance();
     }
 }

@@ -45,7 +45,7 @@ public class KafkaConsumer<TEvent> : IDisposable
         consumer.Commit(result);
     }
 
-    // I don't think this method is firing, but it was created to ensure that the consumer is properly closed when the proxy actor is disposed of
+    // Method created to ensure that the consumer is properly closed when the proxy actor is disposed of
     // Might need to do something different
     public void Dispose()
     {

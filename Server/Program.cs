@@ -20,7 +20,7 @@ using var host = new HostBuilder()
             .UseInMemoryReminderService()
             .UseDashboard(options =>
             {
-                options.Port = 8080;
+                options.Port = 12345;
                 options.Username = "admin";
                 options.Password = "admin";
             })

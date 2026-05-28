@@ -6,6 +6,8 @@ using MessagePack;
 using Orleans.Concurrency;
 using Orleans.Streams;
 using Utilities;
+using ECommerce.Olep.Token;
+using System.Text.Json;
 
 namespace ECommerce.Olep
 {
@@ -14,18 +16,22 @@ namespace ECommerce.Olep
     {
         [Key(0)]
         public double Balance { get; set; }
-
+        // Event number to be able to ignore duplicates 
+        [Key(1)]
+        public Dictionary<int, long> LastCheckoutEventSequenceNumbers { get; set; }
+        [Key(2)]
+        public Dictionary<int, long> LastOutcomeEventSequenceNumbers { get; set; }
         public object Clone()
         {
-            return new CustomerActorState
-            {
-                Balance = this.Balance
-            };
+            string temp = JsonSerializer.Serialize(this);
+            return JsonSerializer.Deserialize<CustomerActorState>(temp);
         }
 
         public CustomerActorState()
         {
             this.Balance = 0;
+            this.LastCheckoutEventSequenceNumbers = new Dictionary<int, long>();
+            this.LastOutcomeEventSequenceNumbers = new Dictionary<int, long>();
         }
     }
 
@@ -37,12 +43,6 @@ namespace ECommerce.Olep
 
         private AsyncCheckpointer<CustomerActorState> checkpointer;
         private IDisposable checkpointTimer;
-
-        // Use this for kafka checkpointing. i.e. last kafka event that was gotten.
-        // OR maybe not. Atleast we need to somehow checkpoint the current kafka state for this actor.
-        // Instead of a guid, we can just use the timestamp as a hack.
-        // If we recieve an event that has a lesser timestamp, then we know it's a duplicate and can ignore it.
-        private int lastEventTimestamp;
 
         private KafkaProducer<Outcome> outcomeProducer;
         private KafkaProducer<Inventory> inventoryProducer;
@@ -81,8 +81,22 @@ namespace ECommerce.Olep
         }
 
         public async Task ProcessCheckout(Checkout checkout, StreamSequenceToken token = null)
-        {
+        {   
             checkpointer.Tick();
+
+            if (token is ConcreteToken concreteToken)
+            {
+                // Check if the event is a duplicate by comparing the sequence number (timestamp) with the last processed event
+                if (this.state.LastCheckoutEventSequenceNumbers.TryGetValue(concreteToken.EventIndex, out long lastSequenceNumber))
+                {
+                    if (concreteToken.SequenceNumber <= lastSequenceNumber)
+                    {
+                        // If so, just return
+                        Console.WriteLine($"Duplicate event detected for customer actor {this.id} in checkout processing");
+                        return;
+                    }
+                }
+            }
 
             var total = checkout.price * checkout.quantity;
             if (total > this.state.Balance)
@@ -91,6 +105,7 @@ namespace ECommerce.Olep
                 var outcome = new Outcome(this.id, checkout.productId, checkout.price * checkout.quantity, Status.INSUFFICIENT_BALANCE);
                 //await outcomeProducer.Append(this.id, outcome);
                 _ = outcomeProducer.Append(this.id, outcome);
+
                 return;
             }
 
@@ -100,12 +115,38 @@ namespace ECommerce.Olep
             // Get product log and send inventory request to product actor
             var inventoryEvent = new Inventory(this.id, checkout.price, checkout.quantity);
             //await inventoryProducer.Append(checkout.productId, inventoryEvent);
+
             _ = inventoryProducer.Append(checkout.productId, inventoryEvent);
+
+            // The request has now been processed fully and we note the sequence number (timestamp) on the token to be able to ignore duplicates later
+            if (token is ConcreteToken _concreteToken)
+            {
+                if (state.LastCheckoutEventSequenceNumbers.ContainsKey(_concreteToken.EventIndex))
+                {
+                    state.LastCheckoutEventSequenceNumbers[_concreteToken.EventIndex] = _concreteToken.SequenceNumber;
+                }
+                else
+                {
+                    state.LastCheckoutEventSequenceNumbers.Add(_concreteToken.EventIndex, _concreteToken.SequenceNumber);
+                }
+            }
         }
 
         public async Task ProcessOutcome(Outcome outcome, StreamSequenceToken token = null)
         {
-            checkpointer.Tick();
+            if (token is ConcreteToken concreteToken)
+            {
+                // Check if the event is a duplicate by comparing the sequence number (timestamp) with the last processed event
+                if (this.state.LastOutcomeEventSequenceNumbers.TryGetValue(concreteToken.EventIndex, out long lastSequenceNumber))
+                {
+                    if (concreteToken.SequenceNumber <= lastSequenceNumber)
+                    {
+                        // If so, just write to console and return 
+                        // Console.WriteLine($"Duplicate event detected for customer actor {this.id} in outcome processing");
+                        return;
+                    }
+                }       
+            }
 
             // Realistically we should undo the reservation here in case the outcome failed,
             // however the outcome cannot fail after INSUFFICIENT_BALANCE has been checked,
@@ -115,6 +156,19 @@ namespace ECommerce.Olep
 
             // If, for example, the inventory could not resupply,
             // then we would need to undo the reservation here.
+
+            // The request has now been processed fully and we note the sequence number (timestamp) on the token to be able to ignore duplicates later
+            if (token is ConcreteToken _concreteToken)
+            {
+                if (state.LastOutcomeEventSequenceNumbers.ContainsKey(_concreteToken.EventIndex))
+                {
+                    state.LastOutcomeEventSequenceNumbers[_concreteToken.EventIndex] = _concreteToken.SequenceNumber;
+                }
+                else
+                {
+                    state.LastOutcomeEventSequenceNumbers.Add(_concreteToken.EventIndex, _concreteToken.SequenceNumber);
+                }
+            }
         }
 
         public Task<double> GetBalance()

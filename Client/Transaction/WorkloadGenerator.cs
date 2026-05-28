@@ -1,4 +1,4 @@
-using ECommerce.Kafka;
+﻿using ECommerce.Kafka;
 using ECommerce.Olep.Interfaces;
 using ECommerce.Olep.Schema;
 using MathNet.Numerics.Distributions;
@@ -166,5 +166,9 @@ namespace Client.Transaction
             return sb.ToString();
         }
 
+        public async Task<double> GetTotalAnalyticsBalance()
+        {
+            return await client.GetGrain<IAnalyticsActor>(0).GetSumOfAllBalance();
+        }
     }
 }

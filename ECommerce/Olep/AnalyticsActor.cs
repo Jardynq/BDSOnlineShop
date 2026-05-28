@@ -1,10 +1,11 @@
 ﻿using ECommerce.Olep.Checkpointing;
 using ECommerce.Olep.Interfaces;
 using ECommerce.Olep.Schema;
+using ECommerce.Olep.Token;
 using MessagePack;
-using Orleans.Concurrency;
 using Orleans.Streams;
 using System.Text.Json;
+using Utilities;
 
 namespace ECommerce.Olep
 {
@@ -13,12 +14,18 @@ namespace ECommerce.Olep
     {
         [Key(0)]
         public Dictionary<long, double> Query { get; set; }
+
+        // Use a dictionary of hashSets so each Kafka Partition is a key into the the dictionary
+        // Then we store the last Constants.StoreCapacity offsets from this partition to see if they have been processed before
+        // This is the "Sliding window technique" and it is necessary for the analytics actor since this grain can be activate from different consumers using the same partition
         [Key(1)]
+        public Dictionary<int, HashSet<long>> ProcessedOutcomeEvent { get; set; }
+
+        [Key(2)]
         public Dictionary<long, int> DebugQuery { get; set; }
 
         public object Clone()
         {
-            // Why is C# like this...
             string temp = JsonSerializer.Serialize(this);
             return JsonSerializer.Deserialize<AnalyticsActorState>(temp);
         }
@@ -27,10 +34,11 @@ namespace ECommerce.Olep
         {
             this.Query = new Dictionary<long, double>();
             this.DebugQuery = new Dictionary<long, int>();
+            this.ProcessedOutcomeEvent = new Dictionary<int, HashSet<long>>(Constants.StoreCapacity);
         }
     }
 
-    [Reentrant]
+    //[Reentrant]
     public class AnalyticsActor : Grain, IAnalyticsActor
     {
         private AnalyticsActorState state;
@@ -62,7 +70,20 @@ namespace ECommerce.Olep
 
         public Task UpdateAsync(Outcome outcome, StreamSequenceToken token = null)
         {
-            checkpointer.Tick();
+
+            if (token is ConcreteToken concreteToken)
+            {
+                // Check if the event is a duplicate by comparing the sequence number (timestamp) with the last processed event
+                if (this.state.ProcessedOutcomeEvent.TryGetValue(concreteToken.EventIndex, out HashSet<long> set))
+                {
+                    if (set.Contains(concreteToken.SequenceNumber))
+                    {
+                        // Already processed sequence number from this partition so we discard the processing of this event and continue
+                        Console.WriteLine($"Duplicate event detected for analytics actor 0: partition = {concreteToken.EventIndex}, offset = {concreteToken.SequenceNumber}");
+                        return Task.CompletedTask;
+                    }
+                }
+            }
 
             // If checkout is successful, update the total sales for the corresponding product
             if (outcome.status == Status.OK)
@@ -70,9 +91,35 @@ namespace ECommerce.Olep
                 var previous = this.state.Query.GetValueOrDefault(outcome.customerId, 0);
                 this.state.Query[outcome.customerId] = previous + outcome.total;
             }
+
             // Increment the debug counter for end-to-end latency metrics.
             var previousCount = this.state.DebugQuery.GetValueOrDefault(outcome.customerId, 0);
             this.state.DebugQuery[outcome.customerId] = previousCount + 1;
+
+            // The request has now been processed fully and we note the sequence number (timestamp) on the token to be able to ignore duplicates later
+            if (token is ConcreteToken _concreteToken)
+            {
+                if (state.ProcessedOutcomeEvent.ContainsKey(_concreteToken.EventIndex))
+                {
+
+                    while (state.ProcessedOutcomeEvent[_concreteToken.EventIndex].Count() >= Constants.StoreCapacity)
+                    {
+                        long oldestOffset = state.ProcessedOutcomeEvent[_concreteToken.EventIndex].Min();
+                        state.ProcessedOutcomeEvent[_concreteToken.EventIndex].Remove(oldestOffset);
+                    }
+                    state.ProcessedOutcomeEvent[_concreteToken.EventIndex].Add(_concreteToken.SequenceNumber);
+                }
+                else
+                {
+                    state.ProcessedOutcomeEvent.Add(
+                        _concreteToken.EventIndex,
+                        new HashSet<long>(Constants.StoreCapacity)
+                        {
+                            _concreteToken.SequenceNumber
+                        }
+                    );
+                }
+            }
             return Task.CompletedTask;
         }
 
@@ -86,6 +133,11 @@ namespace ECommerce.Olep
         public async Task<int> CustomerOutcomeProcessedCount(long customerId)
         {
             return this.state.DebugQuery.GetValueOrDefault(customerId, 0);
+        }
+
+        public async Task<double> GetSumOfAllBalance()
+        {
+            return await Task.FromResult(this.state.Query.Values.Sum());
         }
     }
 }

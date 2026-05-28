@@ -38,5 +38,6 @@ public class KafkaBootstrapService : BackgroundService
             tasks.Add(outcomeConsumer.StartFromBootstrap());
         }
         await Task.WhenAll(tasks);
+        Console.WriteLine("\n ***** All Kafka-proxies activated ***** \n");
     }
 }

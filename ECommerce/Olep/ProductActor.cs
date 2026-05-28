@@ -2,9 +2,11 @@
 using ECommerce.Olep.Checkpointing;
 using ECommerce.Olep.Interfaces;
 using ECommerce.Olep.Schema;
+using ECommerce.Olep.Token;
 using MessagePack;
 using Orleans.Concurrency;
 using Orleans.Streams;
+using System.Text.Json;
 using Utilities;
 
 namespace ECommerce.Olep
@@ -16,20 +18,19 @@ namespace ECommerce.Olep
         public int Quantity { get; set; }
         [Key(1)]
         public double Price { get; set; }
-
+        [Key(2)]
+        public Dictionary<int, long> LastInventoryEventSequenceNumbers { get; set; }
         public object Clone()
         {
-            return new ProductActorState
-            {
-                Quantity = this.Quantity,
-                Price = this.Price
-            };
+            string temp = JsonSerializer.Serialize(this);
+            return JsonSerializer.Deserialize<ProductActorState>(temp);
         }
 
         public ProductActorState()
         {
             this.Quantity = 0;
             this.Price = 0;
+            this.LastInventoryEventSequenceNumbers = new Dictionary<int, long>();
         }
     }
 
@@ -76,6 +77,20 @@ namespace ECommerce.Olep
         {
             checkpointer.Tick();
 
+            if (token is ConcreteToken concreteToken)
+            {
+                // Check if the event is a duplicate by comparing the sequence number (timestamp) with the last processed event
+                if (this.state.LastInventoryEventSequenceNumbers.TryGetValue(concreteToken.EventIndex, out long lastSequenceNumber))
+                {
+                    if (concreteToken.SequenceNumber <= lastSequenceNumber)
+                    {
+                        // If so, just return
+                        Console.WriteLine($"Duplicate event detected for customer actor {this.id} in checkout processing");
+                        return;
+                    }
+                }
+            }
+
             // Check inventory quantity
             if (this.state.Quantity < inventory.quantity)
             {
@@ -88,6 +103,19 @@ namespace ECommerce.Olep
             var outcomeEvent = new Outcome(inventory.customerId, this.id, inventory.price * inventory.quantity, Status.OK);
             //await outcomeProducer.Append(inventory.customerId, outcomeEvent);
             _ = outcomeProducer.Append(inventory.customerId, outcomeEvent);
+
+            // The request has now been processed fully and we note the sequence number (timestamp) on the token to be able to ignore duplicates later
+            if (token is ConcreteToken _concreteToken)
+            {
+                if (state.LastInventoryEventSequenceNumbers.ContainsKey(_concreteToken.EventIndex))
+                {
+                    state.LastInventoryEventSequenceNumbers[_concreteToken.EventIndex] = _concreteToken.SequenceNumber;
+                }
+                else
+                {
+                    state.LastInventoryEventSequenceNumbers.Add(_concreteToken.EventIndex, _concreteToken.SequenceNumber);
+                }
+            }
         }
 
         public Task<double> GetPrice()

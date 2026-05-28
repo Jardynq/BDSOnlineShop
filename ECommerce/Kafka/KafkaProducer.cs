@@ -14,11 +14,13 @@ public class KafkaProducer<TEvent> : IDisposable
         var config = new ProducerConfig
         {
             BootstrapServers = Constants.kafkaService,
-            EnableIdempotence = true,
             Acks = Acks.All,
+            /*
+            EnableIdempotence = true,
             MessageSendMaxRetries = 10,
             RetryBackoffMs = 100,
             MessageTimeoutMs = 5000 // 5 seconds
+            */
         };
 
         var kafkaBuilder = new ProducerBuilder<long, TEvent>(config)
@@ -34,6 +36,7 @@ public class KafkaProducer<TEvent> : IDisposable
         // here we use the .NET kafka client implemented by Confluent
         await producer.ProduceAsync(topic, new Message<long, TEvent>
         {
+            Timestamp = new Timestamp(DateTime.UtcNow),
             Key = key,
             Value = e
         });

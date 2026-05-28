@@ -93,11 +93,15 @@ namespace Client.Transaction
                     Console.WriteLine("\n ***********************************************************************");
                 }
 
+
                 // the top-10 customers
                 Console.WriteLine($"The top-10 customers are: ");
                 var top10 = await workload.GetTopTen();
                 Console.WriteLine(top10);
-                Console.WriteLine("\n ***********************************************************************");
+
+                //var totalBalanceAnalytics = await workload.GetTotalAnalyticsBalance();
+                //Console.WriteLine($"Sum of analytics (Should match 'Total customer balance spent'): {totalBalanceAnalytics}");
+                //Console.WriteLine("\n ***********************************************************************");
             }
 
             await workload.StopClient();
@@ -189,7 +193,7 @@ namespace Client.Transaction
                     {
                         break;
                     }
-                    Thread.Sleep(50);
+                    Thread.Sleep(10);
                 }
                 currentCount = newCount;
                 var endTime = (long)(watch.ElapsedTicks * 1e9 / Stopwatch.Frequency);
